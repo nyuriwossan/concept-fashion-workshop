@@ -9,6 +9,9 @@ function design(outputMode = "all") {
     directions: ["graceful", "mystical"],
     baseEn: "haute-couture gown",
     baseShortEn: "haute couture gown",
+    baseVariantEn: "",
+    motifVariantEn: "",
+    artNouveauMode: false,
     traditionalAttireEn: "",
     traditionalRegionEn: "",
     traditionalTreatmentEn: "",
@@ -20,6 +23,11 @@ function design(outputMode = "all") {
     strengthEn: "bold",
     exposure: 3,
     preserveTradition: false,
+    qipaoMode: false,
+    qipaoSlitId: "",
+    qipaoDetailsEn: [],
+    foodMode: false,
+    foodApplicationsEn: [],
     sleeveId: "",
     sleeveEn: "",
     legId: "",
@@ -30,6 +38,8 @@ function design(outputMode = "all") {
     subjectEn: "an adult woman",
     poseEn: "Use a full-body runway composition",
     poseShortEn: "full body, runway walk",
+    poseMoodEn: "",
+    seatEn: "",
     backgroundEn: "Keep a minimal theme-colored backdrop",
     backgroundShortEn: "minimal themed backdrop",
     styleEnabled: true,
@@ -210,4 +220,135 @@ test("qipao keeps sleeveless and bare legs at the same time", () => {
   assert.match(prompt, /sleeveless/);
   assert.match(prompt, /bare legs/);
   assert.doesNotMatch(prompt, /long sleeves|stockings|tights|pants under (?:the )?dress/);
+});
+
+test("male qipao keeps black sleeveless bare-leg design in a turning pose", () => {
+  const input = traditionalDesign("an adult man", "qipao / cheongsam");
+  Object.assign(input, {
+    qipaoMode: true,
+    paletteEn: "lacquer black and warm gold",
+    sleeveId: "sleeveless",
+    sleeveEn: "sleeveless, bare shoulders, exposed arms",
+    legId: "bare_legs",
+    legEn: "bare legs and exposed legs without lower-body underlayers",
+    qipaoSlitId: "high",
+    qipaoDetailsEn: [
+      "a clean high stand collar with a diagonal closure",
+      "an above-knee hem",
+      "a high side slit",
+      "a self-contained one-piece silhouette with a clean arm line and no separate draped panels",
+    ],
+    poseEn: "Use a full-body over-the-shoulder turning pose",
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /adult man/);
+  assert.match(prompt, /qipao/);
+  assert.match(prompt, /lacquer black/);
+  assert.match(prompt, /sleeveless/);
+  assert.match(prompt, /bare legs/);
+  assert.match(prompt, /turning pose/);
+  assert.doesNotMatch(prompt, /hanfu|long sleeves|trousers|detached sleeves/);
+});
+
+test("male belly dance costume can use a supported sofa-seated pose", () => {
+  const input = traditionalDesign("an adult man", "belly dance costume");
+  input.poseEn = "Use a stable full-body seated fashion pose";
+  input.seatEn = "a plush sofa";
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /adult man/);
+  assert.match(prompt, /belly dance costume/);
+  assert.match(prompt, /plush sofa/);
+  assert.match(prompt, /visible physical support/);
+});
+
+test("woman can wear an above-knee frilled idol mini on stage", () => {
+  const input = design("all");
+  Object.assign(input, {
+    motifEn: "starlight",
+    baseEn: "concept idol costume",
+    baseVariantEn: "an above-knee frilled mini skirt with sparkling layered ruffles",
+    subjectEn: "an adult woman",
+    poseEn: "Show the full figure in a theatrical stage pose",
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /adult woman/);
+  assert.match(prompt, /above-knee frilled mini skirt/);
+  assert.match(prompt, /stage pose/);
+});
+
+test("androgynous Art Nouveau stays an independent midi silhouette", () => {
+  const input = design("pose");
+  Object.assign(input, {
+    motifEn: "Art-Nouveau",
+    motifVariantEn: "a softly draped midi-length silhouette",
+    artNouveauMode: true,
+    subjectEn: "an androgynous adult model",
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /androgynous adult model/);
+  assert.match(prompt, /midi-length silhouette/);
+  assert.match(prompt, /western decorative-fashion language/);
+  assert.doesNotMatch(prompt, /qipao|cheongsam|high slit/);
+});
+
+test("cream soda motif keeps transparent bubbles and safe prop placement", () => {
+  const input = design("all");
+  Object.assign(input, {
+    motifEn: "retro cream soda",
+    paletteEn: "mint green, vanilla white, cherry red, and glass-clear highlights",
+    materialsEn: "transparent organza, liquid-gloss satin, and bubble sequins",
+    foodMode: true,
+    foodApplicationsEn: ["the color palette", "a handheld or table prop"],
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /transparent organza/);
+  assert.match(prompt, /bubble sequins/);
+  assert.match(prompt, /tray, plate, glass, table, or background prop/);
+  assert.match(prompt, /away from intimate or sensitive body areas/);
+});
+
+test("wine motif supports liquid color and a glass prop", () => {
+  const input = design("all");
+  Object.assign(input, {
+    motifEn: "wine",
+    paletteEn: "deep wine red and crystal-clear highlights",
+    materialsEn: "liquid satin and transparent glass-like panels",
+    foodMode: true,
+    foodApplicationsEn: ["material and surface texture", "a handheld or table prop"],
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /deep wine red/);
+  assert.match(prompt, /liquid satin/);
+  assert.match(prompt, /handheld or table prop/);
+});
+
+test("lemon summer outfit can use a stable seated composition", () => {
+  const input = design("pose");
+  Object.assign(input, {
+    motifEn: "lemon",
+    directions: ["fresh", "summery"],
+    foodMode: true,
+    poseEn: "Use a stable full-body seated fashion pose",
+    seatEn: "a decorative garden chair",
+  });
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /lemon-inspired/);
+  assert.match(prompt, /summery/);
+  assert.match(prompt, /garden chair/);
+});
+
+test("jellyfish costume supports a reclining overhead composition", () => {
+  const input = design("pose");
+  input.poseEn = "View the reclining figure from directly above, arranging the costume as a clear graphic shape";
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /jellyfish-inspired/);
+  assert.match(prompt, /reclining figure from directly above/);
+});
+
+test("traditional clothing supports a front full-body inspection pose", () => {
+  const input = traditionalDesign("an androgynous adult model", "kimono");
+  input.poseEn = "Use a straight-on full-body composition with an unobstructed costume silhouette";
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /kimono-inspired attire/);
+  assert.match(prompt, /straight-on full-body composition/);
 });

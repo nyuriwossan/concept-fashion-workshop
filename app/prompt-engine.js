@@ -67,26 +67,48 @@ function controlRules(input) {
   const openShoulders = sleeveless || input.sleeveId === "off_shoulder" || input.sleeveId === "arm_covers";
   const bareLegs = input.legId === "bare_legs";
   const coveredLegs = input.legId === "long_skirt";
+  const noSlit = input.qipaoSlitId === "none" || /\bslit-free\b/i.test(input.motifVariantEn || "");
+  const modestSlit = input.qipaoSlitId === "modest" || /\bmodest slit\b/i.test(input.motifVariantEn || "");
+  const avoidAutomaticSlit = input.artNouveauMode && !modestSlit;
+  const cleanQipao = input.qipaoMode && (input.qipaoDetailsEn || []).some((value) => /self-contained one-piece/i.test(value));
   const sleeveConflicts = sleeveless
     ? [/\b(?:long(?:\s+water)?|flowing|wide|fitted|broad|voluminous)\s+sleeves?\b/i]
     : [];
   const legConflicts = bareLegs ? [/\b(?:stockings?|tights?|pants?|trousers?)\b/i] : [];
-  const slitConflicts = coveredLegs ? [/\b(?:high|thigh-high|side)\s+slits?\b/i, /\bexposed legs?\b/i] : [];
-  const sourceConflicts = [...sleeveConflicts, ...legConflicts, ...slitConflicts];
+  const slitConflicts = coveredLegs || noSlit
+    ? [/\b(?:high|thigh-high|side|modest)?\s*slits?\b/i, /\bexposed legs?\b/i]
+    : modestSlit ? [/\b(?:high|thigh-high)\s+slits?\b/i] : [];
+  const armDrapeConflicts = cleanQipao
+    ? [/\b(?:detached|separate|floating|flowing|wide)\s+(?:arm covers?|sleeves?|draped panels?)\b/i]
+    : [];
+  const sourceConflicts = [...sleeveConflicts, ...legConflicts, ...slitConflicts, ...armDrapeConflicts];
 
   return {
     source: (value) => withoutConflicts(value, sourceConflicts),
     placement: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, legConflicts),
-    structure: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, [...legConflicts, ...slitConflicts]),
+    structure: (value) => (sleeveless || cleanQipao) && /\b(?:sleeves?|arm covers?|draped panels?)\b/i.test(value) ? "" : withoutConflicts(value, [...legConflicts, ...slitConflicts]),
     focus: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, legConflicts),
     exposure: (value) => {
       if (openShoulders && /\b(?:mostly\s+)?covered shoulders\b/i.test(value)) return "";
+      if (avoidAutomaticSlit && /\bslit\b/i.test(value)) {
+        return "with intentionally controlled skin exposure that respects the selected Art Nouveau silhouette without adding a slit";
+      }
+      if (noSlit && /\bslit\b/i.test(value)) {
+        return "with intentionally controlled skin exposure while maintaining a continuous slit-free hem";
+      }
+      if (modestSlit && /\b(?:high|thigh-high)\s+slit\b/i.test(value)) {
+        return "with intentionally controlled skin exposure and only one modest side slit";
+      }
       return withoutConflicts(value, slitConflicts);
     },
     sleeve: input.sleeveEn ? `Use ${input.sleeveEn}` : "",
     leg: input.legEn
       ? input.legId === "bare_legs" && /\b(?:qipao|cheongsam)\b/i.test(input.traditionalAttireEn || "")
-        ? "Use bare legs, exposed legs, a high side slit, and bare legs visible through the slit, without leg coverings or lower-body underlayers"
+        ? noSlit
+          ? "Use bare legs and exposed legs below the hem, without leg coverings or lower-body underlayers"
+          : modestSlit
+            ? "Use bare legs, exposed legs, and bare legs visible through one modest side slit, without leg coverings or lower-body underlayers"
+            : "Use bare legs, exposed legs, a high side slit, and bare legs visible through the slit, without leg coverings or lower-body underlayers"
         : `Use ${input.legEn}`
       : "",
   };
@@ -132,6 +154,14 @@ export function buildPrompt(input) {
           : "",
       ])
     : "";
+  const baseVariant = input.baseVariantEn ? `Shape the outfit as ${input.baseVariantEn}` : "";
+  const motifVariant = input.motifVariantEn ? `Use ${input.motifVariantEn}` : "";
+  const artNouveauIdentity = input.artNouveauMode
+    ? "Treat Art Nouveau as an independent Western decorative-fashion language of organic whiplash curves, flowers, vines, jewel-like details, glass-art color, soft drape, and elegant ornament"
+    : "";
+  const qipaoDetails = input.qipaoMode && (input.qipaoDetailsEn || []).length
+    ? `Keep a recognizable self-contained qipao / cheongsam construction, using ${compact(input.qipaoDetailsEn)}; keep the arms and lower body free of unrelated extra layers`
+    : "";
   const translation = compact([
     controls.source(input.paletteEn) ? `a ${controls.source(input.paletteEn)} palette` : "",
     controls.source(input.materialsEn) ? `${controls.source(input.materialsEn)} materials` : "",
@@ -149,13 +179,22 @@ export function buildPrompt(input) {
   const safeFocus = controls.focus(input.focusEn);
   const focus = safeFocus ? `Give visual priority to ${safeFocus}` : "";
   const exposurePrompt = controls.exposure(exposure.prompt);
+  const foodApplications = compact(input.foodApplicationsEn || []);
+  const food = input.foodMode && input.motifEn
+    ? `Apply the ${input.motifEn} motif through ${foodApplications || "the palette, textile pattern, and accessories"}. Keep literal food and drink away from intimate or sensitive body areas; place them only in the hands or on a tray, plate, glass, table, or background prop`
+    : "";
 
   const supportingSentences = [
     traditionalContext,
+    baseVariant,
+    motifVariant,
+    artNouveauIdentity,
+    qipaoDetails,
     translation
       ? `Translate the motif${input.strengthEn ? ` at ${input.strengthEn} intensity` : ""} through ${translation}`
       : "",
     placement,
+    food,
     exposurePrompt,
     controls.sleeve,
     controls.leg,
@@ -173,6 +212,8 @@ export function buildPrompt(input) {
     sentence(lead),
     ...supportingSentences.map(sentence),
     poseIncluded ? sentence(input.poseEn) : "",
+    poseIncluded ? sentence(input.poseMoodEn) : "",
+    poseIncluded && input.seatEn ? sentence(`Seat the figure securely on ${input.seatEn}, with visible physical support and natural contact`) : "",
     allIncluded ? sentence(input.backgroundEn) : "",
     allIncluded && input.styleEnabled ? sentence(input.styleEn) : "",
   ]
@@ -185,15 +226,22 @@ export function buildPrompt(input) {
       ? `${selectedAttire}, ${baseShortEn}`
       : input.motifEn ? `${input.motifEn}-inspired ${baseShortEn}` : "",
     directions,
+    input.baseVariantEn,
+    input.motifVariantEn,
+    input.artNouveauMode ? "Art Nouveau organic curves and Western decorative ornament" : "",
+    ...(input.qipaoMode ? input.qipaoDetailsEn || [] : []),
     controls.source(input.paletteEn),
     controls.source(input.materialsEn),
     ...safePlacements,
+    input.foodMode ? compact(input.foodApplicationsEn || []) : "",
     exposurePrompt ? exposure.short : "",
     input.sleeveEn,
     controls.leg,
     ...safeStructures,
     safeFocus ? input.focusShortEn : "",
     poseIncluded ? input.poseShortEn : "",
+    poseIncluded ? input.poseMoodEn : "",
+    poseIncluded ? input.seatEn : "",
     allIncluded ? input.backgroundShortEn : "",
     allIncluded && input.styleEnabled ? input.styleShortEn : "",
   ]);
@@ -205,11 +253,14 @@ export function buildPrompt(input) {
     blocks: {
       motif: compact([selectedAttire || input.motifEn, input.strengthEn]),
       outfit: compact([outfitCore, traditionalContext, translation]),
+      variant: compact([baseVariant, motifVariant, artNouveauIdentity, qipaoDetails]),
+      food,
       sleeves: controls.sleeve,
       legs: controls.leg,
       structure: compact(safeStructures),
       exposure: exposurePrompt,
       pose: poseIncluded ? input.poseEn : "",
+      seat: poseIncluded ? input.seatEn || "" : "",
       background: allIncluded ? input.backgroundEn : "",
       style: allIncluded && input.styleEnabled ? input.styleEn : "",
     },

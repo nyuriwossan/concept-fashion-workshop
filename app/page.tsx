@@ -1,11 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { buildPrompt } from "./prompt-engine";
 import { EMPTY_SELECTIONS, createEmptySelections, createSampleSelections } from "./selection-state";
+import {
+  ART_NOUVEAU_SHAPES,
+  FOOD_APPLICATIONS,
+  FOOD_GROUPS,
+  FOOD_MOTIFS,
+  IDOL_STYLES,
+  POSE_MOODS,
+  PRESENTATIONS,
+  QIPAO_DRAPES,
+  QIPAO_LENGTHS,
+  QIPAO_NECKLINES,
+  QIPAO_SLITS,
+  SEATS,
+} from "./extended-options";
 
 type Choice = { id: string; label: string; en: string; shortEn?: string };
 type Motif = Choice & {
+  groupId?: string;
   palette: string;
   materials: string;
   shape: string;
@@ -60,13 +75,7 @@ const MOTIF_CATEGORIES: Array<{
     id: "food",
     label: "食べ物・飲み物",
     icon: "♨",
-    items: [
-      { id: "macaron", label: "マカロン", en: "macaron", palette: "pastel pistachio, raspberry pink, and cream", materials: "matte satin, airy tulle, and sugar-like beadwork", shape: "rounded tiers and crisp piped edges", detail: "petite rosettes and confectionery pearls", summary: "丸い層とパステル色で、マカロンの軽やかさを表します" },
-      { id: "black_tea", label: "紅茶", en: "black-tea", palette: "amber, burgundy, and porcelain ivory", materials: "tea-stained silk, velvet, and delicate lace", shape: "rising steam curves and a refined hourglass form", detail: "tea-leaf embroidery and porcelain-like brooches", summary: "琥珀色と立つ湯気の曲線で、香り高い衣装にします" },
-      { id: "pomegranate", label: "ざくろ", en: "pomegranate", palette: "garnet red, ruby, and deep leaf green", materials: "rich velvet, glossy beads, and structured silk", shape: "a split fruit silhouette with clustered jewel forms", detail: "seed-like gems and crown-shaped edging", summary: "宝石のような実と深紅で、濃密な華やかさを作ります" },
-      { id: "cream_soda", label: "クリームソーダ", en: "retro cream-soda", palette: "soda green, vanilla white, and cherry red", materials: "sparkling organza, glossy satin, and bubble-like sequins", shape: "a fizzy bell silhouette with floating circular layers", detail: "cherry ornaments and translucent bubbles", summary: "泡・チェリー・ソーダ色をレトロポップにまとめます" },
-      { id: "dark_chocolate", label: "ビターチョコ", en: "dark-chocolate", palette: "cocoa brown, black cherry, and muted gold", materials: "dense velvet, glossy leather, and gold foil", shape: "clean broken-bar geometry and a sharp fitted form", detail: "cacao-pod embossing and geometric wrappers", summary: "深い茶色と端正な面で、ほろ苦い高級感を表します" },
-    ],
+    items: FOOD_MOTIFS,
   },
   {
     id: "nature",
@@ -259,21 +268,6 @@ const FOCUSES: Choice[] = [
   { id: "mechanism", label: "モチーフの仕掛け", en: "the motif-driven construction", shortEn: "concept-detail focus" },
 ];
 
-const PRESENTATIONS = [
-  { id: "runway", label: "ランウェイ", note: "全身と歩き", en: "Use a full-body, eye-level runway composition, walking forward with a confident posture and a composed expression", shortEn: "full body, eye level, runway walk" },
-  { id: "editorial", label: "ファッション誌風", note: "腰上・洗練", en: "Use a cowboy-shot fashion editorial composition, turned three-quarters toward the viewer with an elegant model pose", shortEn: "cowboy shot, fashion editorial pose" },
-  { id: "poster", label: "ポスター風", note: "中央・強い形", en: "Frame the full figure centrally like a fashion poster, standing in a clear iconic pose with strong negative space", shortEn: "full body, centered poster composition" },
-  { id: "fantasy", label: "幻想一枚絵", note: "流れ・余韻", en: "Create a full-body fantasy illustration with a gentle low angle, flowing fabric motion, and an entranced expression", shortEn: "full body, low angle, flowing fantasy pose" },
-  { id: "stage", label: "舞台風", note: "動き・照明", en: "Show the full figure in a theatrical stage pose with one sweeping gesture and a dramatic upward gaze", shortEn: "full body, theatrical stage pose" },
-  { id: "sitting", label: "座り姿", note: "裾を広げる", en: "Use a full-body seated pose that arranges the hem and train clearly around the figure, viewed at eye level", shortEn: "full-body seated pose, arranged train" },
-  { id: "reclining", label: "寝姿・俯瞰", note: "上から・布の面", en: "View the reclining figure from above, using the spread fabric as a graphic composition while keeping the costume readable", shortEn: "reclining, viewed from above, spread fabric" },
-  { id: "back", label: "背面美", note: "背中・振り返り", en: "Use a full-body back view with an over-the-shoulder glance, clearly displaying the back design and train", shortEn: "full body, back view, over shoulder" },
-  { id: "upper", label: "上半身主役", note: "顔・襟・袖", en: "Use an upper-body, eye-level portrait with one hand near the collar, keeping the neckline and sleeves unobstructed", shortEn: "upper body, hand near collar" },
-  { id: "detail", label: "装飾アップ", note: "寄り・精密", en: "Use a close-up editorial crop focused on the face-framing ornament, textile detail, and craftsmanship", shortEn: "close-up, ornament and textile detail" },
-  { id: "dramatic", label: "ドラマチック", note: "斜め・躍動", en: "Use a full-body low-angle composition with a slight Dutch angle, a strong turning pose, and wind-swept fabric", shortEn: "full body, low angle, Dutch angle, turning pose" },
-  { id: "cinematic", label: "シネマ風", note: "横向き・余白", en: "Use a cinematic cowboy shot in side view, with controlled movement, layered depth, and purposeful negative space", shortEn: "cowboy shot, side view, cinematic composition" },
-];
-
 const BACKGROUNDS = [
   { id: "none", label: "衣装だけ", note: "背景指定なし", en: "", shortEn: "" },
   { id: "light", label: "軽い演出", note: "光と粒子のみ", en: "Keep the setting minimal with theme-colored rim light and a few restrained atmospheric particles, leaving the costume as the clear focal point", shortEn: "minimal backdrop, themed rim light" },
@@ -438,13 +432,21 @@ function ScopePicker({ value, onChange }: { value: string; onChange: (id: string
 
 export default function Home() {
   const [categoryId, setCategoryId] = useState<string>(EMPTY_SELECTIONS.categoryId);
+  const [foodGroupId, setFoodGroupId] = useState<string>(EMPTY_SELECTIONS.foodGroupId);
+  const [foodApplications, setFoodApplications] = useState<string[]>([...EMPTY_SELECTIONS.foodApplications]);
   const [motifId, setMotifId] = useState<string>(EMPTY_SELECTIONS.motifId);
   const [customMotif, setCustomMotif] = useState<string>(EMPTY_SELECTIONS.customMotif);
   const [directions, setDirections] = useState<string[]>([...EMPTY_SELECTIONS.directions]);
   const [baseId, setBaseId] = useState<string>(EMPTY_SELECTIONS.baseId);
+  const [idolStyleId, setIdolStyleId] = useState<string>(EMPTY_SELECTIONS.idolStyleId);
+  const [artNouveauShapeId, setArtNouveauShapeId] = useState<string>(EMPTY_SELECTIONS.artNouveauShapeId);
   const [regionId, setRegionId] = useState<string>(EMPTY_SELECTIONS.regionId);
   const [attireId, setAttireId] = useState<string>(EMPTY_SELECTIONS.attireId);
   const [traditionId, setTraditionId] = useState<string>(EMPTY_SELECTIONS.traditionId);
+  const [qipaoNecklineId, setQipaoNecklineId] = useState<string>(EMPTY_SELECTIONS.qipaoNecklineId);
+  const [qipaoLengthId, setQipaoLengthId] = useState<string>(EMPTY_SELECTIONS.qipaoLengthId);
+  const [qipaoSlitId, setQipaoSlitId] = useState<string>(EMPTY_SELECTIONS.qipaoSlitId);
+  const [qipaoDrapeId, setQipaoDrapeId] = useState<string>(EMPTY_SELECTIONS.qipaoDrapeId);
   const [placements, setPlacements] = useState<string[]>([...EMPTY_SELECTIONS.placements]);
   const [strengthId, setStrengthId] = useState<string>(EMPTY_SELECTIONS.strengthId);
   const [exposure, setExposure] = useState<number | null>(EMPTY_SELECTIONS.exposure);
@@ -453,6 +455,8 @@ export default function Home() {
   const [structures, setStructures] = useState<string[]>([...EMPTY_SELECTIONS.structures]);
   const [focusId, setFocusId] = useState<string>(EMPTY_SELECTIONS.focusId);
   const [presentationId, setPresentationId] = useState<string>(EMPTY_SELECTIONS.presentationId);
+  const [poseMoodId, setPoseMoodId] = useState<string>(EMPTY_SELECTIONS.poseMoodId);
+  const [seatId, setSeatId] = useState<string>(EMPTY_SELECTIONS.seatId);
   const [backgroundId, setBackgroundId] = useState<string>(EMPTY_SELECTIONS.backgroundId);
   const [subjectId, setSubjectId] = useState<string>(EMPTY_SELECTIONS.subjectId);
   const [styleEnabled, setStyleEnabled] = useState<boolean>(EMPTY_SELECTIONS.styleEnabled);
@@ -469,7 +473,14 @@ export default function Home() {
     items: [] as Motif[],
   };
   const traditionalMode = categoryId === "traditional";
+  const foodMode = categoryId === "food";
   const attire = ATTIRES.find((item) => item.id === attireId) || EMPTY_ATTIRE;
+  const qipaoMode = traditionalMode && attireId === "qipao";
+  const artNouveauMode = categoryId === "art" && motifId === "art_nouveau";
+  const idolMode = baseId === "idol" || (categoryId === "stage" && motifId === "idol");
+  const foodItems = foodGroupId
+    ? FOOD_MOTIFS.filter((item) => item.groupId === foodGroupId)
+    : [];
   const motif = traditionalMode
     ? attire
     : category.items.find((item) => item.id === motifId) || EMPTY_MOTIF;
@@ -483,11 +494,13 @@ export default function Home() {
   const visibleAttires = !attireId || regionAttires.some((item) => item.id === attireId)
     ? regionAttires
     : [attire, ...regionAttires];
+  const selectedPresentation = PRESENTATIONS.find((item) => item.id === presentationId);
+  const seatedMode = Boolean(selectedPresentation?.seated);
 
-  const result = useMemo(() => {
+  const result = (() => {
     const base = findChoice(BASES, baseId);
     const focus = findChoice(FOCUSES, focusId);
-    const presentation = PRESENTATIONS.find((item) => item.id === presentationId) || PRESENTATIONS[0];
+    const presentation = PRESENTATIONS.find((item) => item.id === presentationId);
     const background = BACKGROUNDS.find((item) => item.id === backgroundId) || BACKGROUNDS[0];
     const paint = findChoice(PAINTS, paintId);
     const finish = findChoice(FINISHES, finishId);
@@ -499,6 +512,9 @@ export default function Home() {
       directions: directions.map((id) => findChoice(DIRECTIONS, id).en),
       baseEn: base.en,
       baseShortEn: base.shortEn || base.en,
+      baseVariantEn: idolMode ? findChoice(IDOL_STYLES, idolStyleId).en : "",
+      motifVariantEn: artNouveauMode ? findChoice(ART_NOUVEAU_SHAPES, artNouveauShapeId).en : "",
+      artNouveauMode,
       traditionalAttireEn: traditionalMode ? attire.en : "",
       traditionalRegionEn: traditionalMode ? findChoice(REGIONS, regionId).en : "",
       traditionalTreatmentEn: traditionalMode ? treatment.en : "",
@@ -510,6 +526,20 @@ export default function Home() {
       strengthEn: findChoice(STRENGTHS, strengthId).en,
       exposure,
       preserveTradition,
+      qipaoMode,
+      qipaoSlitId: qipaoMode ? qipaoSlitId : "",
+      qipaoDetailsEn: qipaoMode
+        ? [
+            findChoice(QIPAO_NECKLINES, qipaoNecklineId).en,
+            findChoice(QIPAO_LENGTHS, qipaoLengthId).en,
+            findChoice(QIPAO_SLITS, qipaoSlitId).en,
+            findChoice(QIPAO_DRAPES, qipaoDrapeId).en,
+          ].filter(Boolean)
+        : [],
+      foodMode,
+      foodApplicationsEn: foodMode
+        ? foodApplications.map((id) => findChoice(FOOD_APPLICATIONS, id).en)
+        : [],
       sleeveId,
       sleeveEn: findChoice(SLEEVES, sleeveId).en,
       legId,
@@ -518,20 +548,19 @@ export default function Home() {
       focusEn: focus.en,
       focusShortEn: focus.shortEn || focus.en,
       subjectEn: findChoice(SUBJECTS, subjectId).en,
-      poseEn: presentation.en,
-      poseShortEn: presentation.shortEn,
+      poseEn: presentation?.en || "",
+      poseShortEn: presentation?.shortEn || "",
+      poseMoodEn: findChoice(POSE_MOODS, poseMoodId).en,
+      seatEn: seatedMode
+        ? findChoice(SEATS, seatId).en || "an appropriate stable seat that visibly supports the figure"
+        : "",
       backgroundEn: background.en,
       backgroundShortEn: background.shortEn,
       styleEnabled,
       styleEn: `Render with ${paint.en}, ${finish.en}, and ${line.en}`,
       styleShortEn: `${paint.en}, ${finish.en}, ${line.en}`,
     });
-  }, [
-    attire, backgroundId, baseId, directions, exposure, finishId,
-    focusId, legId, lineId, motif, motifEn, outputMode, paintId, placements,
-    presentationId, preserveTradition, regionId, strengthId, structures, styleEnabled,
-    subjectId, sleeveId, traditionId, traditionalMode,
-  ]);
+  })();
 
   const hasDesignSelection = Boolean(motifEn || attireId || customActive);
   const summary = hasDesignSelection
@@ -539,8 +568,13 @@ export default function Home() {
         traditionalMode ? `${attire.label}を衣装の核にします` : `${motifLabel}をモチーフにします`,
         directions.length ? `方向は${directions.map((id) => findChoice(DIRECTIONS, id).label).join("＋")}` : "",
         baseId ? `衣装ベースは${findChoice(BASES, baseId).label}` : "",
+        idolMode && idolStyleId ? `アイドル衣装は${findChoice(IDOL_STYLES, idolStyleId).label}` : "",
+        artNouveauMode && artNouveauShapeId ? `シルエットは${findChoice(ART_NOUVEAU_SHAPES, artNouveauShapeId).label}` : "",
+        qipaoMode && qipaoLengthId ? `旗袍は${findChoice(QIPAO_LENGTHS, qipaoLengthId).label}` : "",
         sleeveId ? `袖は${findChoice(SLEEVES, sleeveId).label}` : "",
         legId ? `脚は${findChoice(LEG_STYLES, legId).label}` : "",
+        poseMoodId ? `ポーズの雰囲気は${findChoice(POSE_MOODS, poseMoodId).label}` : "",
+        seatedMode ? `座面は${seatId ? findChoice(SEATS, seatId).label : "自動で安定した座面"}` : "",
         subjectId ? `着用者は${findChoice(SUBJECTS, subjectId).label}` : "",
         outputMode ? `出力範囲は${OUTPUT_MODES.find((item) => item.id === outputMode)?.label}` : "",
       ].filter(Boolean).join("。") + "。"
@@ -551,11 +585,28 @@ export default function Home() {
     setMotifId("");
     setAttireId("");
     setCustomMotif("");
+    setFoodGroupId("");
+    setFoodApplications([]);
+    setArtNouveauShapeId("");
+    setQipaoNecklineId(""); setQipaoLengthId(""); setQipaoSlitId(""); setQipaoDrapeId("");
   }
 
   function chooseMotif(id: string) {
     setMotifId(id);
     setCustomMotif("");
+    if (id !== "art_nouveau") setArtNouveauShapeId("");
+  }
+
+  function chooseBase(id: string) {
+    setBaseId(id);
+    if (id !== "idol") setIdolStyleId("");
+  }
+
+  function chooseAttire(id: string) {
+    setAttireId(id);
+    if (id !== "qipao") {
+      setQipaoNecklineId(""); setQipaoLengthId(""); setQipaoSlitId(""); setQipaoDrapeId("");
+    }
   }
 
   async function copyText(text: string, key: string) {
@@ -576,13 +627,18 @@ export default function Home() {
   }
 
   function applySelections(next: ReturnType<typeof createEmptySelections>) {
-    setCategoryId(next.categoryId); setMotifId(next.motifId); setCustomMotif(next.customMotif);
-    setDirections(next.directions); setBaseId(next.baseId);
+    setCategoryId(next.categoryId); setFoodGroupId(next.foodGroupId); setFoodApplications(next.foodApplications);
+    setMotifId(next.motifId); setCustomMotif(next.customMotif);
+    setDirections(next.directions); setBaseId(next.baseId); setIdolStyleId(next.idolStyleId);
+    setArtNouveauShapeId(next.artNouveauShapeId);
     setRegionId(next.regionId); setAttireId(next.attireId); setTraditionId(next.traditionId);
+    setQipaoNecklineId(next.qipaoNecklineId); setQipaoLengthId(next.qipaoLengthId);
+    setQipaoSlitId(next.qipaoSlitId); setQipaoDrapeId(next.qipaoDrapeId);
     setPlacements(next.placements); setStrengthId(next.strengthId);
     setExposure(next.exposure); setSleeveId(next.sleeveId); setLegId(next.legId);
     setStructures(next.structures); setFocusId(next.focusId);
-    setPresentationId(next.presentationId); setBackgroundId(next.backgroundId); setSubjectId(next.subjectId);
+    setPresentationId(next.presentationId); setPoseMoodId(next.poseMoodId); setSeatId(next.seatId);
+    setBackgroundId(next.backgroundId); setSubjectId(next.subjectId);
     setStyleEnabled(next.styleEnabled); setPaintId(next.paintId); setFinishId(next.finishId);
     setLineId(next.lineId); setOutputMode(next.outputMode); setCopied("");
   }
@@ -598,11 +654,14 @@ export default function Home() {
   const breakdown = [
     ["モチーフ", result.blocks.motif, Boolean(result.blocks.motif)],
     ["衣装", result.blocks.outfit, Boolean(result.blocks.outfit)],
+    ["専用アレンジ", result.blocks.variant, Boolean(result.blocks.variant)],
+    ["食べ物の反映", result.blocks.food, Boolean(result.blocks.food)],
     ["袖", result.blocks.sleeves, Boolean(result.blocks.sleeves)],
     ["脚の見せ方", result.blocks.legs, Boolean(result.blocks.legs)],
     ["構造アレンジ", result.blocks.structure, Boolean(result.blocks.structure)],
     ["露出度の反映", result.blocks.exposure, Boolean(result.blocks.exposure)],
     ["構図・見せ方", result.blocks.pose, Boolean(result.blocks.pose)],
+    ["座面", result.blocks.seat, Boolean(result.blocks.seat)],
     ["背景・演出", result.blocks.background, Boolean(result.blocks.background)],
     ["画風", result.blocks.style, Boolean(result.blocks.style)],
   ] as const;
@@ -661,12 +720,19 @@ export default function Home() {
                 </fieldset>
                 {categoryId && !traditionalMode ? (
                   <>
+                    {foodMode ? (
+                      <div className="conditional-panel food-filter-panel">
+                        <div className="conditional-title"><span>食べ物・飲み物の大分類</span><small>分類で絞ってから、具体的なモチーフを選べます</small></div>
+                        <ChipGroup label="大分類" items={FOOD_GROUPS} selected={foodGroupId} onChange={(next) => { setFoodGroupId(next as string); setMotifId(""); }} />
+                      </div>
+                    ) : null}
                     <fieldset className="field-block motif-field">
                       <legend>{category.label}の候補</legend>
+                      {foodMode && !foodGroupId ? <p className="field-hint">先に大分類を選んでください</p> : null}
                       <div className="motif-grid">
-                        {category.items.map((item) => (
+                        {(foodMode ? foodItems : category.items).map((item) => (
                           <button key={item.id} type="button" aria-pressed={!customActive && motif.id === item.id} onClick={() => chooseMotif(item.id)}>
-                            <strong>{item.label}</strong><small>{item.en}</small>
+                            <strong>{item.label}</strong><small>{foodMode ? "衣装モチーフ" : item.en}</small>
                           </button>
                         ))}
                       </div>
@@ -702,13 +768,44 @@ export default function Home() {
                   <div className="conditional-panel">
                     <div className="conditional-title"><span>民族・伝統衣装</span><small>地域 → 衣装 → アレンジ度の順に選びます</small></div>
                     <ChipGroup label="地域で絞り込み" items={REGIONS} selected={regionId} onChange={(next) => setRegionId(next as string)} />
-                    <ChipGroup label="衣装（人物タイプに関係なく全て着用できます）" items={visibleAttires} selected={attireId} onChange={(next) => setAttireId(next as string)} />
+                    <ChipGroup label="衣装（人物タイプに関係なく全て着用できます）" items={visibleAttires} selected={attireId} onChange={(next) => chooseAttire(next as string)} />
                     <ChipGroup label="アレンジ度" items={TRADITION_TREATMENTS} selected={traditionId} onChange={(next) => setTraditionId(next as string)} />
                   </div>
                 ) : null}
 
+                {qipaoMode ? (
+                  <div className="conditional-panel">
+                    <div className="conditional-title"><span>旗袍（チャイナドレス）専用設定</span><small>旗袍の核を保ち、余分な袖布や別衣装の下半身を混ぜません</small></div>
+                    <ChipGroup label="襟・首まわり" items={QIPAO_NECKLINES} selected={qipaoNecklineId} onChange={(next) => setQipaoNecklineId(next as string)} />
+                    <ChipGroup label="丈" items={QIPAO_LENGTHS} selected={qipaoLengthId} onChange={(next) => setQipaoLengthId(next as string)} />
+                    <ChipGroup label="スリット" items={QIPAO_SLITS} selected={qipaoSlitId} onChange={(next) => setQipaoSlitId(next as string)} />
+                    <ChipGroup label="追加の布" items={QIPAO_DRAPES} selected={qipaoDrapeId} onChange={(next) => setQipaoDrapeId(next as string)} />
+                  </div>
+                ) : null}
+
                 <ChipGroup label="方向・テイスト" items={DIRECTIONS} selected={directions} onChange={(next) => setDirections(next as string[])} multi max={2} />
-                <ChipGroup label="衣装ベース" items={BASES} selected={baseId} onChange={(next) => setBaseId(next as string)} />
+                <ChipGroup label="衣装ベース" items={BASES} selected={baseId} onChange={(next) => chooseBase(next as string)} />
+
+                {idolMode ? (
+                  <div className="conditional-panel">
+                    <div className="conditional-title"><span>アイドル衣装の形</span><small>フリルミニからメンズ・ユニセックスまで、人物タイプを問わず選べます</small></div>
+                    <ChipGroup label="アイドルスタイル" items={IDOL_STYLES} selected={idolStyleId} onChange={(next) => setIdolStyleId(next as string)} />
+                  </div>
+                ) : null}
+
+                {artNouveauMode ? (
+                  <div className="conditional-panel">
+                    <div className="conditional-title"><span>アール・ヌーヴォーのシルエット</span><small>旗袍とは独立した西洋装飾様式として形を選びます</small></div>
+                    <ChipGroup label="シルエット" items={ART_NOUVEAU_SHAPES} selected={artNouveauShapeId} onChange={(next) => setArtNouveauShapeId(next as string)} />
+                  </div>
+                ) : null}
+
+                {foodMode ? (
+                  <div className="conditional-panel">
+                    <div className="conditional-title"><span>食べ物モチーフの使い方</span><small>実物を使う場合も、手・トレー・器・背景へ安全に配置します</small></div>
+                    <ChipGroup label="反映方法" items={FOOD_APPLICATIONS} selected={foodApplications} onChange={(next) => setFoodApplications(next as string[])} multi max={4} />
+                  </div>
+                ) : null}
 
                 <ChipGroup label="モチーフの反映先" items={PLACEMENTS} selected={placements} onChange={(next) => setPlacements(next as string[])} multi max={4} />
                 <ChipGroup label="反映強度" items={STRENGTHS} selected={strengthId} onChange={(next) => setStrengthId(next as string)} />
@@ -742,6 +839,13 @@ export default function Home() {
                     ))}
                   </div>
                 </fieldset>
+                <ChipGroup label="ポーズの雰囲気" items={POSE_MOODS} selected={poseMoodId} onChange={(next) => setPoseMoodId(next as string)} />
+                {seatedMode ? (
+                  <div className="conditional-panel">
+                    <div className="conditional-title"><span>座る場所</span><small>未選択でも、人物を支える自然な座面を自動指定します</small></div>
+                    <ChipGroup label="座面・場所" items={SEATS} selected={seatId} onChange={(next) => setSeatId(next as string)} />
+                  </div>
+                ) : null}
                 <fieldset className="field-block">
                   <legend>背景・演出の強さ</legend>
                   <div className="background-grid">

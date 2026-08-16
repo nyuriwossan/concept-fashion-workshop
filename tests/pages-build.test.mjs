@@ -28,6 +28,12 @@ test("GitHub Pages bundle contains the interactive app and mobile styles", async
   assert.match(js, /完全リセット/);
   assert.match(js, /おすすめを読み込む/);
   assert.match(js, /旗袍（チャイナドレス）/);
+  assert.match(js, /食べ物・飲み物の大分類/);
+  assert.match(js, /旗袍（チャイナドレス）専用設定/);
+  assert.match(js, /アイドル衣装の形/);
+  assert.match(js, /アール・ヌーヴォーのシルエット/);
+  assert.match(js, /ポーズの雰囲気/);
+  assert.match(js, /座る場所/);
   assert.match(css, /overflow-x:hidden/);
   assert.match(css, /(?:max-width:|width<=)560px/);
 });

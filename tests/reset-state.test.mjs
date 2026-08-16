@@ -10,6 +10,9 @@ function promptFromResetState(state) {
     directions: state.directions,
     baseEn: "",
     baseShortEn: "",
+    baseVariantEn: "",
+    motifVariantEn: "",
+    artNouveauMode: false,
     traditionalAttireEn: "",
     traditionalRegionEn: "",
     traditionalTreatmentEn: "",
@@ -21,6 +24,11 @@ function promptFromResetState(state) {
     strengthEn: "",
     exposure: state.exposure,
     preserveTradition: false,
+    qipaoMode: false,
+    qipaoSlitId: state.qipaoSlitId,
+    qipaoDetailsEn: [],
+    foodMode: false,
+    foodApplicationsEn: state.foodApplications,
     sleeveId: state.sleeveId,
     sleeveEn: "",
     legId: state.legId,
@@ -31,6 +39,8 @@ function promptFromResetState(state) {
     subjectEn: "",
     poseEn: "",
     poseShortEn: "",
+    poseMoodEn: "",
+    seatEn: "",
     backgroundEn: "",
     backgroundShortEn: "",
     styleEnabled: state.styleEnabled,
@@ -64,5 +74,22 @@ test("regenerating after reset cannot retain the sample category or exposure", (
   assert.equal(result.blocks.outfit, "");
   assert.equal(result.blocks.sleeves, "");
   assert.equal(result.blocks.legs, "");
+  assert.equal(result.blocks.variant, "");
+  assert.equal(result.blocks.food, "");
+  assert.equal(result.blocks.seat, "");
   assert.doesNotMatch(JSON.stringify(result), /qipao|cheongsam|sleeveless|bare legs|open neckline/i);
+});
+
+test("reset clears food, qipao, idol, art, pose mood, and seat state", () => {
+  const reset = createEmptySelections();
+  assert.equal(reset.foodGroupId, "");
+  assert.deepEqual(reset.foodApplications, []);
+  assert.equal(reset.qipaoNecklineId, "");
+  assert.equal(reset.qipaoLengthId, "");
+  assert.equal(reset.qipaoSlitId, "");
+  assert.equal(reset.qipaoDrapeId, "");
+  assert.equal(reset.idolStyleId, "");
+  assert.equal(reset.artNouveauShapeId, "");
+  assert.equal(reset.poseMoodId, "");
+  assert.equal(reset.seatId, "");
 });
