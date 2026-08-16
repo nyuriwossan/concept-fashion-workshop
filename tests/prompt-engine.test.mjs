@@ -34,6 +34,27 @@ function design(outputMode = "all") {
   };
 }
 
+function traditionalDesign(subjectEn, traditionalAttireEn) {
+  return {
+    ...design("all"),
+    // Regression guard: a stale motif must never leak into a selected attire.
+    motifEn: "hanfu",
+    paletteEn: "garment-specific palette",
+    materialsEn: "garment-specific materials",
+    shapeEn: "the selected garment's recognizable silhouette",
+    detailEn: "garment-specific detailing",
+    traditionalAttireEn,
+    traditionalRegionEn: "",
+    traditionalTreatmentEn: "a high-fashion transformation",
+    preserveTradition: false,
+    subjectEn,
+  };
+}
+
+function searchablePrompt(result) {
+  return [result.detailed, result.short, ...Object.values(result.blocks)].join(" ").toLowerCase();
+}
+
 test("outfit mode excludes person, pose, background, and style", () => {
   const result = buildPrompt(design("outfit"));
   assert.match(result.detailed, /jellyfish-inspired/);
@@ -64,4 +85,87 @@ test("tradition-forward high exposure is adapted instead of blindly amplified", 
   assert.equal(result.adapted, true);
   assert.match(result.prompt, /preserving the garment's recognizable traditional structure/);
   assert.doesNotMatch(result.prompt, /exposed midriff|thigh-high slit/);
+});
+
+test("adult man with qipao keeps qipao and excludes stale hanfu", () => {
+  const prompt = searchablePrompt(buildPrompt(traditionalDesign("an adult man", "qipao / cheongsam")));
+  assert.match(prompt, /adult man/);
+  assert.match(prompt, /qipao/);
+  assert.match(prompt, /cheongsam/);
+  assert.doesNotMatch(prompt, /hanfu/);
+});
+
+test("adult woman with qipao keeps qipao and excludes stale hanfu", () => {
+  const prompt = searchablePrompt(buildPrompt(traditionalDesign("an adult woman", "qipao / cheongsam")));
+  assert.match(prompt, /adult woman/);
+  assert.match(prompt, /qipao/);
+  assert.doesNotMatch(prompt, /hanfu/);
+});
+
+test("adult man keeps belly dance costume without gender-based substitution", () => {
+  const prompt = searchablePrompt(buildPrompt(traditionalDesign("an adult man", "belly dance costume")));
+  assert.match(prompt, /adult man/);
+  assert.match(prompt, /belly dance costume/);
+  assert.doesNotMatch(prompt, /hanfu/);
+});
+
+test("adult woman keeps mariachi-inspired attire", () => {
+  const prompt = searchablePrompt(buildPrompt(traditionalDesign("an adult woman", "mariachi-inspired attire")));
+  assert.match(prompt, /adult woman/);
+  assert.match(prompt, /mariachi-inspired attire/);
+  assert.doesNotMatch(prompt, /hanfu/);
+});
+
+test("androgynous model keeps sari", () => {
+  const prompt = searchablePrompt(buildPrompt(traditionalDesign("an androgynous adult model", "sari")));
+  assert.match(prompt, /androgynous adult model/);
+  assert.match(prompt, /sari/);
+  assert.doesNotMatch(prompt, /hanfu/);
+});
+
+test("hanfu appears when and only when hanfu is the selected attire", () => {
+  const hanfu = searchablePrompt(buildPrompt(traditionalDesign("an adult man", "hanfu")));
+  const qipao = searchablePrompt(buildPrompt(traditionalDesign("an adult man", "qipao / cheongsam")));
+  assert.match(hanfu, /hanfu/);
+  assert.doesNotMatch(qipao, /hanfu/);
+});
+
+test("changing only the person type never changes the selected attire block", () => {
+  const man = buildPrompt(traditionalDesign("an adult man", "qipao / cheongsam"));
+  const woman = buildPrompt(traditionalDesign("an adult woman", "qipao / cheongsam"));
+  const androgynous = buildPrompt(traditionalDesign("an androgynous adult model", "qipao / cheongsam"));
+  assert.equal(man.blocks.outfit, woman.blocks.outfit);
+  assert.equal(woman.blocks.outfit, androgynous.blocks.outfit);
+  assert.match(man.blocks.outfit, /qipao/);
+});
+
+test("every traditional attire overrides every stale main motif", () => {
+  const attires = [
+    ["hanfu", "hanfu"],
+    ["qipao / cheongsam", "qipao"],
+    ["hanbok", "hanbok"],
+    ["kimono", "kimono"],
+    ["sari", "sari"],
+    ["lehenga", "lehenga"],
+    ["belly dance costume", "belly dance costume"],
+    ["kaftan", "kaftan"],
+    ["ao dai", "ao dai"],
+    ["flamenco dress", "flamenco dress"],
+    ["European folk costume", "european folk costume"],
+    ["kente-inspired attire", "kente-inspired attire"],
+    ["mariachi-inspired attire", "mariachi-inspired attire"],
+    ["carnival costume", "carnival costume"],
+  ];
+
+  for (const [selected, selectedNeedle] of attires) {
+    for (const [staleMotif, staleNeedle] of attires) {
+      const input = traditionalDesign("an adult model", selected);
+      input.motifEn = staleMotif;
+      const prompt = searchablePrompt(buildPrompt(input));
+      assert.ok(prompt.includes(selectedNeedle), `${selected} must remain selected`);
+      if (selected !== staleMotif) {
+        assert.ok(!prompt.includes(staleNeedle), `${staleMotif} must not leak into ${selected}`);
+      }
+    }
+  }
 });

@@ -12,4 +12,3 @@ createRoot(root).render(
     <Home />
   </StrictMode>,
 );
-

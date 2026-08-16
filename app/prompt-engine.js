@@ -51,6 +51,12 @@ function articleFor(value) {
   return /^[aeiou]/i.test(value.trim()) ? "an" : "a";
 }
 
+function attirePhrase(value) {
+  if (!value) return "";
+  if (/\b(inspired|costume|attire|dress)\b/i.test(value)) return value;
+  return `${value}-inspired attire`;
+}
+
 export function exposureFor(level, preserveTradition = false) {
   const safeLevel = Math.max(0, Math.min(5, Number(level) || 0));
   if (preserveTradition && safeLevel >= 4) {
@@ -69,10 +75,19 @@ export function buildPrompt(input) {
   const exposure = exposureFor(input.exposure, input.preserveTradition);
   const directions = compact(input.directions || []);
   const motifLead = `${directions ? `${directions} ` : ""}${input.motifEn}-inspired ${input.baseEn}`;
-  const traditional = input.traditionalAttireEn
-    ? `rooted in ${compact([input.traditionalAttireEn, input.traditionalRegionEn])}${
-        input.traditionalTreatmentEn ? ` with ${input.traditionalTreatmentEn}` : ""
-      }`
+  const selectedAttire = attirePhrase(input.traditionalAttireEn);
+  const outfitCore = selectedAttire
+    ? `${directions ? `${directions} ` : ""}${selectedAttire}, reimagined as ${articleFor(input.baseEn)} ${input.baseEn}`
+    : motifLead;
+  const traditionalContext = selectedAttire
+    ? compact([
+        input.traditionalTreatmentEn
+          ? `Use ${input.traditionalTreatmentEn}`
+          : "",
+        input.traditionalRegionEn
+          ? `grounded in ${input.traditionalRegionEn}`
+          : "",
+      ])
     : "";
   const translation = compact([
     input.paletteEn ? `a ${input.paletteEn} palette` : "",
@@ -89,7 +104,8 @@ export function buildPrompt(input) {
   const focus = input.focusEn ? `Give visual priority to ${input.focusEn}` : "";
 
   const outfitSentences = [
-    `${articleFor(motifLead)} ${motifLead}${traditional ? `, ${traditional}` : ""}`,
+    `${articleFor(outfitCore)} ${outfitCore}`,
+    traditionalContext,
     translation
       ? `Translate the motif at ${input.strengthEn} intensity through ${translation}`
       : "",
@@ -102,7 +118,7 @@ export function buildPrompt(input) {
   const poseIncluded = input.outputMode !== "outfit";
   const allIncluded = input.outputMode === "all";
   const lead = poseIncluded
-    ? `${input.subjectEn} wearing ${outfitSentences[0]}`
+    ? `${input.subjectEn} wears ${outfitSentences[0]}`
     : outfitSentences[0];
   const detailed = [
     sentence(lead),
@@ -116,7 +132,9 @@ export function buildPrompt(input) {
 
   const short = compact([
     poseIncluded ? input.subjectEn : "",
-    `${input.motifEn}-inspired ${input.baseShortEn || input.baseEn}`,
+    selectedAttire
+      ? `${selectedAttire}, ${input.baseShortEn || input.baseEn}`
+      : `${input.motifEn}-inspired ${input.baseShortEn || input.baseEn}`,
     directions,
     input.paletteEn,
     input.materialsEn,
@@ -134,8 +152,8 @@ export function buildPrompt(input) {
     short,
     exposure,
     blocks: {
-      motif: compact([input.motifEn, input.strengthEn]),
-      outfit: compact([motifLead, traditional, translation]),
+      motif: compact([selectedAttire || input.motifEn, input.strengthEn]),
+      outfit: compact([outfitCore, traditionalContext, translation]),
       structure: compact(input.structuresEn || []) || "no additional structural edit",
       exposure: exposure.prompt,
       pose: poseIncluded ? input.poseEn : "",
