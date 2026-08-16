@@ -57,7 +57,45 @@ function attirePhrase(value) {
   return `${value}-inspired attire`;
 }
 
+function withoutConflicts(value, patterns) {
+  if (!value) return "";
+  return patterns.some((pattern) => pattern.test(value)) ? "" : value;
+}
+
+function controlRules(input) {
+  const sleeveless = input.sleeveId === "sleeveless";
+  const openShoulders = sleeveless || input.sleeveId === "off_shoulder" || input.sleeveId === "arm_covers";
+  const bareLegs = input.legId === "bare_legs";
+  const coveredLegs = input.legId === "long_skirt";
+  const sleeveConflicts = sleeveless
+    ? [/\b(?:long(?:\s+water)?|flowing|wide|fitted|broad|voluminous)\s+sleeves?\b/i]
+    : [];
+  const legConflicts = bareLegs ? [/\b(?:stockings?|tights?|pants?|trousers?)\b/i] : [];
+  const slitConflicts = coveredLegs ? [/\b(?:high|thigh-high|side)\s+slits?\b/i, /\bexposed legs?\b/i] : [];
+  const sourceConflicts = [...sleeveConflicts, ...legConflicts, ...slitConflicts];
+
+  return {
+    source: (value) => withoutConflicts(value, sourceConflicts),
+    placement: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, legConflicts),
+    structure: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, [...legConflicts, ...slitConflicts]),
+    focus: (value) => sleeveless && /\bsleeves?\b/i.test(value) ? "" : withoutConflicts(value, legConflicts),
+    exposure: (value) => {
+      if (openShoulders && /\b(?:mostly\s+)?covered shoulders\b/i.test(value)) return "";
+      return withoutConflicts(value, slitConflicts);
+    },
+    sleeve: input.sleeveEn ? `Use ${input.sleeveEn}` : "",
+    leg: input.legEn
+      ? input.legId === "bare_legs" && /\b(?:qipao|cheongsam)\b/i.test(input.traditionalAttireEn || "")
+        ? "Use bare legs, exposed legs, a high side slit, and bare legs visible through the slit, without leg coverings or lower-body underlayers"
+        : `Use ${input.legEn}`
+      : "",
+  };
+}
+
 export function exposureFor(level, preserveTradition = false) {
+  if (level === null || level === undefined || level === "") {
+    return { label: "未選択", prompt: "", short: "", adapted: false };
+  }
   const safeLevel = Math.max(0, Math.min(5, Number(level) || 0));
   if (preserveTradition && safeLevel >= 4) {
     return {
@@ -73,11 +111,16 @@ export function exposureFor(level, preserveTradition = false) {
 
 export function buildPrompt(input) {
   const exposure = exposureFor(input.exposure, input.preserveTradition);
+  const controls = controlRules(input);
   const directions = compact(input.directions || []);
-  const motifLead = `${directions ? `${directions} ` : ""}${input.motifEn}-inspired ${input.baseEn}`;
+  const baseEn = input.baseEn || "costume";
+  const baseShortEn = input.baseShortEn || input.baseEn || "costume";
+  const motifLead = input.motifEn
+    ? `${directions ? `${directions} ` : ""}${input.motifEn}-inspired ${baseEn}`
+    : "";
   const selectedAttire = attirePhrase(input.traditionalAttireEn);
   const outfitCore = selectedAttire
-    ? `${directions ? `${directions} ` : ""}${selectedAttire}, reimagined as ${articleFor(input.baseEn)} ${input.baseEn}`
+    ? `${directions ? `${directions} ` : ""}${selectedAttire}, reimagined as ${articleFor(baseEn)} ${baseEn}`
     : motifLead;
   const traditionalContext = selectedAttire
     ? compact([
@@ -90,39 +133,45 @@ export function buildPrompt(input) {
       ])
     : "";
   const translation = compact([
-    input.paletteEn ? `a ${input.paletteEn} palette` : "",
-    input.materialsEn ? `${input.materialsEn} materials` : "",
-    input.shapeEn ? `a silhouette shaped by ${input.shapeEn}` : "",
-    input.detailEn ? `${input.detailEn} detailing` : "",
+    controls.source(input.paletteEn) ? `a ${controls.source(input.paletteEn)} palette` : "",
+    controls.source(input.materialsEn) ? `${controls.source(input.materialsEn)} materials` : "",
+    controls.source(input.shapeEn) ? `a silhouette shaped by ${controls.source(input.shapeEn)}` : "",
+    controls.source(input.detailEn) ? `${controls.source(input.detailEn)} detailing` : "",
   ]);
-  const placement = (input.placementsEn || []).length
-    ? `The concept appears through ${compact(input.placementsEn)}`
+  const safePlacements = (input.placementsEn || []).map(controls.placement).filter(Boolean);
+  const placement = safePlacements.length
+    ? `The concept appears through ${compact(safePlacements)}`
     : "";
-  const structure = (input.structuresEn || []).length
-    ? `The construction features ${compact(input.structuresEn)}`
+  const safeStructures = (input.structuresEn || []).map(controls.structure).filter(Boolean);
+  const structure = safeStructures.length
+    ? `The construction features ${compact(safeStructures)}`
     : "";
-  const focus = input.focusEn ? `Give visual priority to ${input.focusEn}` : "";
+  const safeFocus = controls.focus(input.focusEn);
+  const focus = safeFocus ? `Give visual priority to ${safeFocus}` : "";
+  const exposurePrompt = controls.exposure(exposure.prompt);
 
-  const outfitSentences = [
-    `${articleFor(outfitCore)} ${outfitCore}`,
+  const supportingSentences = [
     traditionalContext,
     translation
-      ? `Translate the motif at ${input.strengthEn} intensity through ${translation}`
+      ? `Translate the motif${input.strengthEn ? ` at ${input.strengthEn} intensity` : ""} through ${translation}`
       : "",
     placement,
-    exposure.prompt,
+    exposurePrompt,
+    controls.sleeve,
+    controls.leg,
     structure,
     focus,
   ].filter(Boolean);
 
-  const poseIncluded = input.outputMode !== "outfit";
+  const poseIncluded = input.outputMode === "pose" || input.outputMode === "all";
   const allIncluded = input.outputMode === "all";
-  const lead = poseIncluded
-    ? `${input.subjectEn} wears ${outfitSentences[0]}`
-    : outfitSentences[0];
+  const outfitLead = outfitCore ? `${articleFor(outfitCore)} ${outfitCore}` : "";
+  const lead = outfitLead && poseIncluded && input.subjectEn
+    ? `${input.subjectEn} wears ${outfitLead}`
+    : outfitLead;
   const detailed = [
     sentence(lead),
-    ...outfitSentences.slice(1).map(sentence),
+    ...supportingSentences.map(sentence),
     poseIncluded ? sentence(input.poseEn) : "",
     allIncluded ? sentence(input.backgroundEn) : "",
     allIncluded && input.styleEnabled ? sentence(input.styleEn) : "",
@@ -133,15 +182,17 @@ export function buildPrompt(input) {
   const short = compact([
     poseIncluded ? input.subjectEn : "",
     selectedAttire
-      ? `${selectedAttire}, ${input.baseShortEn || input.baseEn}`
-      : `${input.motifEn}-inspired ${input.baseShortEn || input.baseEn}`,
+      ? `${selectedAttire}, ${baseShortEn}`
+      : input.motifEn ? `${input.motifEn}-inspired ${baseShortEn}` : "",
     directions,
-    input.paletteEn,
-    input.materialsEn,
-    ...(input.placementsEn || []),
-    exposure.short,
-    ...(input.structuresEn || []),
-    input.focusShortEn,
+    controls.source(input.paletteEn),
+    controls.source(input.materialsEn),
+    ...safePlacements,
+    exposurePrompt ? exposure.short : "",
+    input.sleeveEn,
+    controls.leg,
+    ...safeStructures,
+    safeFocus ? input.focusShortEn : "",
     poseIncluded ? input.poseShortEn : "",
     allIncluded ? input.backgroundShortEn : "",
     allIncluded && input.styleEnabled ? input.styleShortEn : "",
@@ -154,8 +205,10 @@ export function buildPrompt(input) {
     blocks: {
       motif: compact([selectedAttire || input.motifEn, input.strengthEn]),
       outfit: compact([outfitCore, traditionalContext, translation]),
-      structure: compact(input.structuresEn || []) || "no additional structural edit",
-      exposure: exposure.prompt,
+      sleeves: controls.sleeve,
+      legs: controls.leg,
+      structure: compact(safeStructures),
+      exposure: exposurePrompt,
       pose: poseIncluded ? input.poseEn : "",
       background: allIncluded ? input.backgroundEn : "",
       style: allIncluded && input.styleEnabled ? input.styleEn : "",

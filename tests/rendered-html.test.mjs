@@ -24,6 +24,10 @@ test("server-renders the finished workshop", async () => {
   assert.match(html, /衣装だけ/);
   assert.match(html, /衣装＋ポーズ/);
   assert.match(html, /完成プロンプト/);
+  assert.match(html, /おすすめを読み込む/);
+  assert.match(html, /完全リセット/);
+  assert.match(html, /<strong>未選択<\/strong>/);
+  assert.doesNotMatch(html, /aria-pressed="true"/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|SkeletonPreview/i);
 });
 
@@ -44,4 +48,3 @@ test("keeps the mobile and interaction contracts in source", async () => {
   assert.match(layout, /title:\s*"コンセプトファッション工房"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 });
-

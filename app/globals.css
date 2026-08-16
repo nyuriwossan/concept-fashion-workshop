@@ -90,6 +90,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
   font-size: .78rem;
   font-weight: 800;
 }
+.topbar-actions { display: flex; gap: 7px; align-items: center; }
+.sample-button { border-color: #d9cdf8; background: var(--violet-soft); color: #5b42a8; }
 .ghost-button:hover { border-color: var(--coral); color: var(--coral-dark); }
 
 .page-shell { width: min(100%, 1360px); margin: 0 auto; padding: 28px 20px 72px; }
@@ -300,6 +302,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .translation-note { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 13px; border-radius: 14px; background: var(--mint-soft); }
 .translation-note > span { display: grid; flex: 0 0 32px; height: 32px; place-items: center; border-radius: 10px; background: white; color: #238f7b; }
 .translation-note b { font-size: .74rem; }.translation-note p { margin: 2px 0 0; color: #4c716b; font-size: .71rem; }
+.reset-note { background: #f3f0ed; }.reset-note > span { color: var(--muted); }.reset-note p { color: var(--muted); }
 
 .conditional-panel { margin-top: 22px; padding: 2px 16px 18px; border: 1px solid #dcd2fa; border-radius: 16px; background: #faf8ff; }
 .conditional-title { margin: 0 -16px; padding: 13px 16px; border-bottom: 1px solid #e8e0fc; }
@@ -312,6 +315,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .slider-header { display: flex; clear: both; justify-content: space-between; align-items: center; padding-top: 4px; }
 .slider-header strong { color: var(--coral-dark); font-size: 1rem; }.slider-header span { color: var(--muted); font-size: .72rem; font-weight: 800; }
 .exposure-field input[type="range"] { width: 100%; height: 44px; accent-color: var(--coral); cursor: pointer; }
+.exposure-field input[type="range"].is-unset { opacity: .42; }
 .slider-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: .61rem; font-weight: 800; }
 .culture-note { margin: 10px 0 0; padding: 10px; border-radius: 10px; background: #fff1c9; color: #73591e; font-size: .68rem; }
 
@@ -368,6 +372,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .prompt-card .compact-prompt { font-family: ui-monospace, "Cascadia Mono", monospace; font-size: .69rem; line-height: 1.72; }
 .copy-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; padding: 8px 14px; border: 0; border-radius: 12px; background: var(--violet); color: white; cursor: pointer; font-size: .75rem; font-weight: 900; }
 .copy-button:hover { background: #6243b8; }.copy-button-secondary { border: 1px solid #d9cdf8; background: var(--violet-soft); color: #5b42a8; }.copy-button-secondary:hover { background: #e5ddfb; }
+.copy-button:disabled, .copy-button:disabled:hover { background: #ddd7e4; color: #91899c; cursor: not-allowed; }
+.prompt-card p.empty-prompt { color: #9a92a3; font-family: inherit; font-style: italic; }
 .summary-card { background: #fff9ee; }.summary-card p { margin: 10px 0 0; color: #685b4e; font-size: .71rem; }
 .breakdown-card { padding: 0; overflow: clip; }
 .breakdown-card > summary { display: flex; justify-content: space-between; align-items: center; min-height: 50px; padding: 10px 14px; cursor: pointer; list-style: none; font-size: .75rem; font-weight: 900; }
@@ -397,10 +403,11 @@ footer p { margin: 0; }footer b, footer small { display: block; }footer b { font
 }
 
 @media (max-width: 560px) {
-  .topbar { min-height: 62px; padding: 8px 12px; }
+  .topbar { min-height: 62px; padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
+  .topbar-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .brand-mark { width: 38px; height: 38px; }
   .brand strong { font-size: .76rem; }.brand small { display: none; }
-  .ghost-button { padding-inline: 11px; font-size: .68rem; }
+  .ghost-button { width: 100%; padding-inline: 8px; font-size: .66rem; }
   .page-shell { padding: 10px 10px 50px; }
   .hero { padding: 32px 20px 22px; border-radius: 22px; }
   .hero h1 { font-size: clamp(2.45rem, 13.2vw, 3.45rem); }
@@ -435,4 +442,3 @@ footer p { margin: 0; }footer b, footer small { display: block; }footer b { font
   html { scroll-behavior: auto; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
-

@@ -23,6 +23,11 @@ test("GitHub Pages bundle contains the interactive app and mobile styles", async
   ]);
   assert.match(js, /衣装＋ポーズだけ/);
   assert.match(js, /完成プロンプト/);
+  assert.match(js, /袖なし/);
+  assert.match(js, /生脚/);
+  assert.match(js, /完全リセット/);
+  assert.match(js, /おすすめを読み込む/);
+  assert.match(js, /旗袍（チャイナドレス）/);
   assert.match(css, /overflow-x:hidden/);
   assert.match(css, /(?:max-width:|width<=)560px/);
 });

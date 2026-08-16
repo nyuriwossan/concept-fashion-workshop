@@ -20,6 +20,10 @@ function design(outputMode = "all") {
     strengthEn: "bold",
     exposure: 3,
     preserveTradition: false,
+    sleeveId: "",
+    sleeveEn: "",
+    legId: "",
+    legEn: "",
     structuresEn: ["layered drapery", "a long train"],
     focusEn: "the full-body silhouette",
     focusShortEn: "silhouette focus",
@@ -168,4 +172,42 @@ test("every traditional attire overrides every stale main motif", () => {
       }
     }
   }
+});
+
+test("qipao with sleeveless keeps exposed arms and removes long-sleeve language", () => {
+  const input = traditionalDesign("an adult woman", "qipao / cheongsam");
+  input.sleeveId = "sleeveless";
+  input.sleeveEn = "sleeveless, bare shoulders, exposed arms";
+  input.shapeEn = "a fitted column with long water sleeves";
+  input.structuresEn = ["wide sleeves", "a high slit"];
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /sleeveless/);
+  assert.match(prompt, /bare shoulders/);
+  assert.match(prompt, /exposed arms/);
+  assert.doesNotMatch(prompt, /long sleeves|long water sleeves|flowing sleeves|wide sleeves|fitted sleeves/);
+});
+
+test("qipao with bare legs removes leg coverings and adds slit-aware wording", () => {
+  const input = traditionalDesign("an adult woman", "qipao / cheongsam");
+  input.legId = "bare_legs";
+  input.legEn = "bare legs, exposed legs, without leg coverings or lower-body underlayers";
+  input.shapeEn = "a fitted column over trousers";
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /bare legs/);
+  assert.match(prompt, /bare legs visible through the slit/);
+  assert.match(prompt, /high side slit/);
+  assert.doesNotMatch(prompt, /stockings|tights|pants under (?:the )?dress|trousers/);
+});
+
+test("qipao keeps sleeveless and bare legs at the same time", () => {
+  const input = traditionalDesign("an adult man", "qipao / cheongsam");
+  input.sleeveId = "sleeveless";
+  input.sleeveEn = "sleeveless, bare shoulders, exposed arms";
+  input.legId = "bare_legs";
+  input.legEn = "bare legs, exposed legs, without leg coverings or lower-body underlayers";
+  const prompt = searchablePrompt(buildPrompt(input));
+  assert.match(prompt, /adult man/);
+  assert.match(prompt, /sleeveless/);
+  assert.match(prompt, /bare legs/);
+  assert.doesNotMatch(prompt, /long sleeves|stockings|tights|pants under (?:the )?dress/);
 });

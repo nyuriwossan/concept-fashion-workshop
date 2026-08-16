@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { buildPrompt } from "./prompt-engine";
+import { EMPTY_SELECTIONS, createEmptySelections, createSampleSelections } from "./selection-state";
 
 type Choice = { id: string; label: string; en: string; shortEn?: string };
 type Motif = Choice & {
@@ -199,6 +200,31 @@ const STRENGTHS: Choice[] = [
   { id: "maximum", label: "ネタMAX", en: "deliberately maximal" },
 ];
 
+const SLEEVES: Choice[] = [
+  { id: "sleeveless", label: "袖なし", en: "sleeveless, bare shoulders, exposed arms" },
+  { id: "cap", label: "キャップスリーブ", en: "small cap sleeves" },
+  { id: "short", label: "半袖", en: "short sleeves" },
+  { id: "elbow", label: "五分袖", en: "elbow-length sleeves" },
+  { id: "long", label: "長袖", en: "long sleeves" },
+  { id: "off_shoulder", label: "オフショルダー", en: "off-shoulder sleeves with an open shoulder line" },
+  { id: "single", label: "片袖", en: "an asymmetric single-sleeve design" },
+  { id: "arm_covers", label: "アームカバーのみ", en: "detached arm covers only, with exposed shoulders and upper arms" },
+  { id: "plain_arms", label: "なし（腕まわり装飾なし）", en: "plain arm styling without arm accessories or sleeve ornaments" },
+];
+
+const LEG_STYLES: Choice[] = [
+  { id: "bare_legs", label: "生脚", en: "bare legs, exposed legs, without leg coverings or lower-body underlayers" },
+  { id: "tights", label: "タイツ", en: "opaque fashion tights" },
+  { id: "stockings", label: "ストッキング", en: "sheer stockings" },
+  { id: "thigh_highs", label: "ニーハイ", en: "thigh-high socks" },
+  { id: "boots", label: "ブーツ", en: "statement boots" },
+  { id: "pants", label: "パンツ併用", en: "tailored pants layered under the garment" },
+  { id: "long_skirt", label: "ロングスカートで隠す", en: "a floor-length skirt that fully conceals the legs" },
+  { id: "high_side_slit", label: "ハイサイドスリット", en: "a high side slit emphasizing the leg line" },
+  { id: "both_legs", label: "両脚見せ", en: "both legs visibly framed by the garment" },
+  { id: "single_leg", label: "片脚見せ", en: "one leg selectively revealed by the garment" },
+];
+
 const STRUCTURES: Choice[] = [
   { id: "high_slit", label: "ハイスリット", en: "a high slit" },
   { id: "side_slit", label: "サイドスリット", en: "a side slit" },
@@ -275,20 +301,20 @@ const REGIONS: Choice[] = [
 ];
 
 const ATTIRES: Attire[] = [
-  { id: "hanfu", regionId: "east_asia", label: "hanfu（漢服）", en: "hanfu", palette: "jade, cinnabar, and warm ivory", materials: "silk, gauze, and woven brocade", shape: "cross-collar layers and long water sleeves", detail: "cloud scrolls and jade ornaments", summary: "漢服の交領・長い袖・重なりを衣装の核にします" },
-  { id: "qipao", regionId: "east_asia", label: "qipao / cheongsam（旗袍）", en: "qipao / cheongsam", palette: "lacquer red, ink black, and warm gold", materials: "lustrous silk, satin piping, and fine brocade", shape: "a high stand collar, diagonal closure, fitted column, and side slits", detail: "frog closures and restrained floral embroidery", summary: "旗袍の立ち襟・斜めの打ち合わせ・細身の縦線を衣装の核にします" },
-  { id: "hanbok", regionId: "east_asia", label: "hanbok（韓服）", en: "hanbok", palette: "soft jade, coral, and ivory", materials: "silk, ramie, and translucent organza", shape: "a short jeogori over a full flowing chima silhouette", detail: "graceful goreum ties and delicate botanical embroidery", summary: "韓服のチョゴリと豊かなチマの対比を衣装の核にします" },
-  { id: "kimono", regionId: "east_asia", label: "kimono（着物）", en: "kimono", palette: "indigo, vermilion, and soft gold", materials: "silk crepe, brocade, and braided cord", shape: "overlapping straight panels with a sculptural obi", detail: "seasonal motifs and fine gold embroidery", summary: "着物の直線的な身頃・重なり・帯を衣装の核にします" },
-  { id: "sari", regionId: "south_asia", label: "sari（サリー）", en: "sari", palette: "saffron, magenta, and antique gold", materials: "draped silk, sheer veil fabric, and metallic embroidery", shape: "continuous wrapped drapery and a sweeping pallu", detail: "paisley borders and jewel-like beadwork", summary: "サリーの連続する布とパッルの流れを衣装の核にします" },
-  { id: "lehenga", regionId: "south_asia", label: "lehenga（レヘンガ）", en: "lehenga", palette: "ruby, marigold, and antique gold", materials: "embroidered silk, airy net, and mirror-work trim", shape: "a fitted choli, expansive skirt, and flowing dupatta", detail: "zari borders, mirror work, and gem-like beading", summary: "レヘンガのチョリ・広がるスカート・ドゥパッタを衣装の核にします" },
-  { id: "belly_dance", regionId: "west_asia", label: "belly dance costume", en: "belly dance costume", palette: "jewel turquoise, amethyst, and gold", materials: "chiffon, velvet, coin fringe, and crystal beading", shape: "a fitted embellished bodice with fluid hip drapes and a sweeping skirt", detail: "coin chains, bead fringe, and rhythmic metallic accents", summary: "ベリーダンス衣装の装飾的な胴部と流れる腰布を衣装の核にします" },
-  { id: "kaftan", regionId: "west_asia", label: "kaftan（カフタン）", en: "kaftan", palette: "lapis blue, turquoise, and warm gold", materials: "flowing silk, woven trim, and metallic thread", shape: "a generous column with broad sleeves and a defined center line", detail: "geometric borders and ornate front embroidery", summary: "カフタンのゆったりした面・広い袖・前中心の装飾を衣装の核にします" },
-  { id: "ao_dai", regionId: "southeast_asia", label: "áo dài（アオザイ）", en: "ao dai", palette: "lotus pink, jade, and pearl white", materials: "silk, satin, and translucent chiffon", shape: "a high-necked fitted tunic with long split panels over flowing trousers", detail: "lotus embroidery and subtle piping", summary: "アオザイの長いスリット入りチュニックとパンツを衣装の核にします" },
-  { id: "flamenco", regionId: "europe", label: "flamenco dress", en: "flamenco dress", palette: "scarlet, black, and cream", materials: "structured stretch fabric, lace, and layered ruffles", shape: "a fitted torso opening into rhythmic cascading flounces", detail: "polka dots, roses, and comb-like ornaments", summary: "フラメンコ衣装の身体に沿う線と連なるフリルを衣装の核にします" },
-  { id: "folk", regionId: "europe", label: "European folk costume", en: "European folk costume", palette: "forest green, berry red, cream, and warm brown", materials: "linen, wool, embroidered cotton, and woven ribbon", shape: "a structured folk bodice with layered skirt panels", detail: "regional floral embroidery and handwoven borders", summary: "ヨーロッパ民俗衣装の胴衣・重ね布・刺繍を衣装の核にします" },
-  { id: "kente", regionId: "africa", label: "kente-inspired attire", en: "kente-inspired attire", palette: "gold, red, green, and deep blue", materials: "handwoven strip cloth, silk, and polished metal accents", shape: "bold wrapped planes with sculptural asymmetric draping", detail: "precise geometric woven patterns", summary: "ケンテの鮮やかな織り柄と布の構成を衣装の核にします" },
-  { id: "mariachi", regionId: "latin", label: "mariachi-inspired attire", en: "mariachi-inspired attire", palette: "charcoal, ivory, silver, and crimson", materials: "fine wool, velvet, satin, and silver metalwork", shape: "a sharply tailored jacket with high-waisted fitted trousers or a sweeping skirt", detail: "ornate botonadura, embroidery, and a sculptural bow tie", summary: "マリアッチ衣装の端正な仕立てと銀装飾を衣装の核にします" },
-  { id: "carnival", regionId: "latin", label: "carnival costume", en: "carnival costume", palette: "electric cyan, fuchsia, emerald, and gold", materials: "feathers, crystal mesh, sequins, and metallic fringe", shape: "a radiant performance silhouette with fan-like back pieces", detail: "dense beadwork, plumes, and rhythmic sparkle", summary: "カーニバル衣装の羽根・ビーズ・躍動的な輪郭を衣装の核にします" },
+  { id: "hanfu", regionId: "east_asia", label: "漢服", en: "hanfu", palette: "jade, cinnabar, and warm ivory", materials: "silk, gauze, and woven brocade", shape: "cross-collar layers and long water sleeves", detail: "cloud scrolls and jade ornaments", summary: "漢服の交領・長い袖・重なりを衣装の核にします" },
+  { id: "qipao", regionId: "east_asia", label: "旗袍（チャイナドレス）", en: "qipao / cheongsam", palette: "lacquer red, ink black, and warm gold", materials: "lustrous silk, satin piping, and fine brocade", shape: "a high stand collar, diagonal closure, fitted column, and side slits", detail: "frog closures and restrained floral embroidery", summary: "旗袍の立ち襟・斜めの打ち合わせ・細身の縦線を衣装の核にします" },
+  { id: "hanbok", regionId: "east_asia", label: "韓服（チマチョゴリ）", en: "hanbok", palette: "soft jade, coral, and ivory", materials: "silk, ramie, and translucent organza", shape: "a short jeogori over a full flowing chima silhouette", detail: "graceful goreum ties and delicate botanical embroidery", summary: "韓服のチョゴリと豊かなチマの対比を衣装の核にします" },
+  { id: "kimono", regionId: "east_asia", label: "着物", en: "kimono", palette: "indigo, vermilion, and soft gold", materials: "silk crepe, brocade, and braided cord", shape: "overlapping straight panels with a sculptural obi", detail: "seasonal motifs and fine gold embroidery", summary: "着物の直線的な身頃・重なり・帯を衣装の核にします" },
+  { id: "sari", regionId: "south_asia", label: "サリー", en: "sari", palette: "saffron, magenta, and antique gold", materials: "draped silk, sheer veil fabric, and metallic embroidery", shape: "continuous wrapped drapery and a sweeping pallu", detail: "paisley borders and jewel-like beadwork", summary: "サリーの連続する布とパッルの流れを衣装の核にします" },
+  { id: "lehenga", regionId: "south_asia", label: "レヘンガ", en: "lehenga", palette: "ruby, marigold, and antique gold", materials: "embroidered silk, airy net, and mirror-work trim", shape: "a fitted choli, expansive skirt, and flowing dupatta", detail: "zari borders, mirror work, and gem-like beading", summary: "レヘンガのチョリ・広がるスカート・ドゥパッタを衣装の核にします" },
+  { id: "belly_dance", regionId: "west_asia", label: "ベリーダンス衣装", en: "belly dance costume", palette: "jewel turquoise, amethyst, and gold", materials: "chiffon, velvet, coin fringe, and crystal beading", shape: "a fitted embellished bodice with fluid hip drapes and a sweeping skirt", detail: "coin chains, bead fringe, and rhythmic metallic accents", summary: "ベリーダンス衣装の装飾的な胴部と流れる腰布を衣装の核にします" },
+  { id: "kaftan", regionId: "west_asia", label: "カフタン", en: "kaftan", palette: "lapis blue, turquoise, and warm gold", materials: "flowing silk, woven trim, and metallic thread", shape: "a generous column with broad sleeves and a defined center line", detail: "geometric borders and ornate front embroidery", summary: "カフタンのゆったりした面・広い袖・前中心の装飾を衣装の核にします" },
+  { id: "ao_dai", regionId: "southeast_asia", label: "アオザイ", en: "ao dai", palette: "lotus pink, jade, and pearl white", materials: "silk, satin, and translucent chiffon", shape: "a high-necked fitted tunic with long split panels over flowing trousers", detail: "lotus embroidery and subtle piping", summary: "アオザイの長いスリット入りチュニックとパンツを衣装の核にします" },
+  { id: "flamenco", regionId: "europe", label: "フラメンコ衣装", en: "flamenco dress", palette: "scarlet, black, and cream", materials: "structured stretch fabric, lace, and layered ruffles", shape: "a fitted torso opening into rhythmic cascading flounces", detail: "polka dots, roses, and comb-like ornaments", summary: "フラメンコ衣装の身体に沿う線と連なるフリルを衣装の核にします" },
+  { id: "folk", regionId: "europe", label: "ヨーロッパ民族衣装", en: "European folk costume", palette: "forest green, berry red, cream, and warm brown", materials: "linen, wool, embroidered cotton, and woven ribbon", shape: "a structured folk bodice with layered skirt panels", detail: "regional floral embroidery and handwoven borders", summary: "ヨーロッパ民俗衣装の胴衣・重ね布・刺繍を衣装の核にします" },
+  { id: "kente", regionId: "africa", label: "ケンテ風衣装", en: "kente-inspired attire", palette: "gold, red, green, and deep blue", materials: "handwoven strip cloth, silk, and polished metal accents", shape: "bold wrapped planes with sculptural asymmetric draping", detail: "precise geometric woven patterns", summary: "ケンテの鮮やかな織り柄と布の構成を衣装の核にします" },
+  { id: "mariachi", regionId: "latin", label: "マリアッチ風衣装", en: "mariachi-inspired attire", palette: "charcoal, ivory, silver, and crimson", materials: "fine wool, velvet, satin, and silver metalwork", shape: "a sharply tailored jacket with high-waisted fitted trousers or a sweeping skirt", detail: "ornate botonadura, embroidery, and a sculptural bow tie", summary: "マリアッチ衣装の端正な仕立てと銀装飾を衣装の核にします" },
+  { id: "carnival", regionId: "latin", label: "カーニバル衣装", en: "carnival costume", palette: "electric cyan, fuchsia, emerald, and gold", materials: "feathers, crystal mesh, sequins, and metallic fringe", shape: "a radiant performance silhouette with fan-like back pieces", detail: "dense beadwork, plumes, and rhythmic sparkle", summary: "カーニバル衣装の羽根・ビーズ・躍動的な輪郭を衣装の核にします" },
 ];
 
 const TRADITION_TREATMENTS: Choice[] = [
@@ -331,8 +357,19 @@ const OUTPUT_MODES = [
   { id: "all", label: "全部", note: "演出まで完成" },
 ];
 
+const EMPTY_CHOICE: Choice = { id: "", label: "未選択", en: "" };
+const EMPTY_MOTIF: Motif = {
+  ...EMPTY_CHOICE,
+  palette: "",
+  materials: "",
+  shape: "",
+  detail: "",
+  summary: "項目を選ぶと、ここに衣装への翻訳方針が表示されます",
+};
+const EMPTY_ATTIRE: Attire = { ...EMPTY_MOTIF, regionId: "" };
+
 function findChoice(list: Choice[], id: string) {
-  return list.find((item) => item.id === id) || list[0];
+  return list.find((item) => item.id === id) || EMPTY_CHOICE;
 }
 
 function ChipGroup({
@@ -365,7 +402,7 @@ function ChipGroup({
               aria-pressed={active}
               key={item.id}
               onClick={() => {
-                if (!multi) return onChange(item.id);
+                if (!multi) return onChange(active ? "" : item.id);
                 const current = selectedList;
                 if (active) return onChange(current.filter((id) => id !== item.id));
                 if (max && current.length >= max) return;
@@ -400,43 +437,50 @@ function ScopePicker({ value, onChange }: { value: string; onChange: (id: string
 }
 
 export default function Home() {
-  const [categoryId, setCategoryId] = useState("concept");
-  const [motifId, setMotifId] = useState("first_love");
-  const [customMotif, setCustomMotif] = useState("");
-  const [directions, setDirections] = useState<string[]>(["graceful", "mystical"]);
-  const [baseId, setBaseId] = useState("couture");
-  const [regionId, setRegionId] = useState("all");
-  const [attireId, setAttireId] = useState("hanfu");
-  const [traditionId, setTraditionId] = useState("fantasy");
-  const [placements, setPlacements] = useState<string[]>(["palette", "materials", "ornament"]);
-  const [strengthId, setStrengthId] = useState("bold");
-  const [exposure, setExposure] = useState(2);
-  const [structures, setStructures] = useState<string[]>(["drapery", "metal"]);
-  const [focusId, setFocusId] = useState("silhouette");
-  const [presentationId, setPresentationId] = useState("runway");
-  const [backgroundId, setBackgroundId] = useState("light");
-  const [subjectId, setSubjectId] = useState("woman");
-  const [styleEnabled, setStyleEnabled] = useState(false);
-  const [paintId, setPaintId] = useState("decorative");
-  const [finishId, setFinishId] = useState("luminous");
-  const [lineId, setLineId] = useState("delicate");
-  const [outputMode, setOutputMode] = useState("all");
+  const [categoryId, setCategoryId] = useState<string>(EMPTY_SELECTIONS.categoryId);
+  const [motifId, setMotifId] = useState<string>(EMPTY_SELECTIONS.motifId);
+  const [customMotif, setCustomMotif] = useState<string>(EMPTY_SELECTIONS.customMotif);
+  const [directions, setDirections] = useState<string[]>([...EMPTY_SELECTIONS.directions]);
+  const [baseId, setBaseId] = useState<string>(EMPTY_SELECTIONS.baseId);
+  const [regionId, setRegionId] = useState<string>(EMPTY_SELECTIONS.regionId);
+  const [attireId, setAttireId] = useState<string>(EMPTY_SELECTIONS.attireId);
+  const [traditionId, setTraditionId] = useState<string>(EMPTY_SELECTIONS.traditionId);
+  const [placements, setPlacements] = useState<string[]>([...EMPTY_SELECTIONS.placements]);
+  const [strengthId, setStrengthId] = useState<string>(EMPTY_SELECTIONS.strengthId);
+  const [exposure, setExposure] = useState<number | null>(EMPTY_SELECTIONS.exposure);
+  const [sleeveId, setSleeveId] = useState<string>(EMPTY_SELECTIONS.sleeveId);
+  const [legId, setLegId] = useState<string>(EMPTY_SELECTIONS.legId);
+  const [structures, setStructures] = useState<string[]>([...EMPTY_SELECTIONS.structures]);
+  const [focusId, setFocusId] = useState<string>(EMPTY_SELECTIONS.focusId);
+  const [presentationId, setPresentationId] = useState<string>(EMPTY_SELECTIONS.presentationId);
+  const [backgroundId, setBackgroundId] = useState<string>(EMPTY_SELECTIONS.backgroundId);
+  const [subjectId, setSubjectId] = useState<string>(EMPTY_SELECTIONS.subjectId);
+  const [styleEnabled, setStyleEnabled] = useState<boolean>(EMPTY_SELECTIONS.styleEnabled);
+  const [paintId, setPaintId] = useState<string>(EMPTY_SELECTIONS.paintId);
+  const [finishId, setFinishId] = useState<string>(EMPTY_SELECTIONS.finishId);
+  const [lineId, setLineId] = useState<string>(EMPTY_SELECTIONS.lineId);
+  const [outputMode, setOutputMode] = useState<string>(EMPTY_SELECTIONS.outputMode);
   const [copied, setCopied] = useState("");
 
-  const category = MOTIF_CATEGORIES.find((item) => item.id === categoryId) || MOTIF_CATEGORIES[0];
+  const category = MOTIF_CATEGORIES.find((item) => item.id === categoryId) || {
+    id: "",
+    label: "",
+    icon: "",
+    items: [] as Motif[],
+  };
   const traditionalMode = categoryId === "traditional";
-  const attire = ATTIRES.find((item) => item.id === attireId) || ATTIRES[0];
+  const attire = ATTIRES.find((item) => item.id === attireId) || EMPTY_ATTIRE;
   const motif = traditionalMode
     ? attire
-    : category.items.find((item) => item.id === motifId) || category.items[0];
+    : category.items.find((item) => item.id === motifId) || EMPTY_MOTIF;
   const customActive = !traditionalMode && customMotif.trim().length > 0;
-  const motifLabel = customActive ? customMotif.trim() : motif.label;
+  const motifLabel = customActive ? customMotif.trim() : motif.label || "まだ未選択";
   const motifEn = customActive ? `custom ${customMotif.trim()} concept` : motif.en;
   const preserveTradition = traditionalMode && traditionId === "traditional";
-  const regionAttires = regionId === "all"
+  const regionAttires = !regionId || regionId === "all"
     ? ATTIRES
     : ATTIRES.filter((item) => item.regionId === regionId);
-  const visibleAttires = regionAttires.some((item) => item.id === attireId)
+  const visibleAttires = !attireId || regionAttires.some((item) => item.id === attireId)
     ? regionAttires
     : [attire, ...regionAttires];
 
@@ -466,6 +510,10 @@ export default function Home() {
       strengthEn: findChoice(STRENGTHS, strengthId).en,
       exposure,
       preserveTradition,
+      sleeveId,
+      sleeveEn: findChoice(SLEEVES, sleeveId).en,
+      legId,
+      legEn: findChoice(LEG_STYLES, legId).en,
       structuresEn: structures.map((id) => findChoice(STRUCTURES, id).en),
       focusEn: focus.en,
       focusShortEn: focus.shortEn || focus.en,
@@ -480,18 +528,29 @@ export default function Home() {
     });
   }, [
     attire, backgroundId, baseId, directions, exposure, finishId,
-    focusId, lineId, motif, motifEn, outputMode, paintId, placements,
+    focusId, legId, lineId, motif, motifEn, outputMode, paintId, placements,
     presentationId, preserveTradition, regionId, strengthId, structures, styleEnabled,
-    subjectId, traditionId, traditionalMode,
+    subjectId, sleeveId, traditionId, traditionalMode,
   ]);
 
-  const summary = `${traditionalMode ? `${attire.label}を衣装の核にして` : `${motifLabel}をモチーフにして`}、「${directions.map((id) => findChoice(DIRECTIONS, id).label).join("＋")}」の方向で${findChoice(BASES, baseId).label}へ。${motif.summary}。着用者は${findChoice(SUBJECTS, subjectId).label}、出力範囲は${OUTPUT_MODES.find((item) => item.id === outputMode)?.label}です。`;
+  const hasDesignSelection = Boolean(motifEn || attireId || customActive);
+  const summary = hasDesignSelection
+    ? [
+        traditionalMode ? `${attire.label}を衣装の核にします` : `${motifLabel}をモチーフにします`,
+        directions.length ? `方向は${directions.map((id) => findChoice(DIRECTIONS, id).label).join("＋")}` : "",
+        baseId ? `衣装ベースは${findChoice(BASES, baseId).label}` : "",
+        sleeveId ? `袖は${findChoice(SLEEVES, sleeveId).label}` : "",
+        legId ? `脚は${findChoice(LEG_STYLES, legId).label}` : "",
+        subjectId ? `着用者は${findChoice(SUBJECTS, subjectId).label}` : "",
+        outputMode ? `出力範囲は${OUTPUT_MODES.find((item) => item.id === outputMode)?.label}` : "",
+      ].filter(Boolean).join("。") + "。"
+    : "まだ選択されていません。項目を選ぶか、「おすすめを読み込む」を使ってください。";
 
   function chooseCategory(id: string) {
-    const next = MOTIF_CATEGORIES.find((item) => item.id === id) || MOTIF_CATEGORIES[0];
     setCategoryId(id);
+    setMotifId("");
+    setAttireId("");
     setCustomMotif("");
-    if (id !== "traditional" && next.items[0]) setMotifId(next.items[0].id);
   }
 
   function chooseMotif(id: string) {
@@ -516,25 +575,36 @@ export default function Home() {
     window.setTimeout(() => setCopied(""), 1600);
   }
 
+  function applySelections(next: ReturnType<typeof createEmptySelections>) {
+    setCategoryId(next.categoryId); setMotifId(next.motifId); setCustomMotif(next.customMotif);
+    setDirections(next.directions); setBaseId(next.baseId);
+    setRegionId(next.regionId); setAttireId(next.attireId); setTraditionId(next.traditionId);
+    setPlacements(next.placements); setStrengthId(next.strengthId);
+    setExposure(next.exposure); setSleeveId(next.sleeveId); setLegId(next.legId);
+    setStructures(next.structures); setFocusId(next.focusId);
+    setPresentationId(next.presentationId); setBackgroundId(next.backgroundId); setSubjectId(next.subjectId);
+    setStyleEnabled(next.styleEnabled); setPaintId(next.paintId); setFinishId(next.finishId);
+    setLineId(next.lineId); setOutputMode(next.outputMode); setCopied("");
+  }
+
   function resetAll() {
-    setCategoryId("concept"); setMotifId("first_love"); setCustomMotif("");
-    setDirections(["graceful", "mystical"]); setBaseId("couture");
-    setRegionId("all"); setAttireId("hanfu"); setTraditionId("fantasy");
-    setPlacements(["palette", "materials", "ornament"]); setStrengthId("bold");
-    setExposure(2); setStructures(["drapery", "metal"]); setFocusId("silhouette");
-    setPresentationId("runway"); setBackgroundId("light"); setSubjectId("woman");
-    setStyleEnabled(false); setPaintId("decorative"); setFinishId("luminous");
-    setLineId("delicate"); setOutputMode("all");
+    applySelections(createEmptySelections());
+  }
+
+  function loadSample() {
+    applySelections(createSampleSelections());
   }
 
   const breakdown = [
-    ["モチーフ", result.blocks.motif, true],
-    ["衣装", result.blocks.outfit, true],
-    ["構造アレンジ", result.blocks.structure, true],
-    ["露出度の反映", result.blocks.exposure, true],
-    ["構図・見せ方", result.blocks.pose, outputMode !== "outfit"],
-    ["背景・演出", result.blocks.background, outputMode === "all"],
-    ["画風", result.blocks.style, outputMode === "all" && styleEnabled],
+    ["モチーフ", result.blocks.motif, Boolean(result.blocks.motif)],
+    ["衣装", result.blocks.outfit, Boolean(result.blocks.outfit)],
+    ["袖", result.blocks.sleeves, Boolean(result.blocks.sleeves)],
+    ["脚の見せ方", result.blocks.legs, Boolean(result.blocks.legs)],
+    ["構造アレンジ", result.blocks.structure, Boolean(result.blocks.structure)],
+    ["露出度の反映", result.blocks.exposure, Boolean(result.blocks.exposure)],
+    ["構図・見せ方", result.blocks.pose, Boolean(result.blocks.pose)],
+    ["背景・演出", result.blocks.background, Boolean(result.blocks.background)],
+    ["画風", result.blocks.style, Boolean(result.blocks.style)],
   ] as const;
 
   return (
@@ -544,7 +614,10 @@ export default function Home() {
           <span className="brand-mark" aria-hidden="true">✦</span>
           <span><strong>コンセプトファッション工房</strong><small>CONCEPT FASHION WORKSHOP</small></span>
         </a>
-        <button className="ghost-button" type="button" onClick={resetAll}>最初に戻す</button>
+        <div className="topbar-actions">
+          <button className="ghost-button sample-button" type="button" onClick={loadSample}>おすすめを読み込む</button>
+          <button className="ghost-button" type="button" onClick={resetAll}>完全リセット</button>
+        </div>
       </header>
 
       <div className="page-shell" id="top">
@@ -562,7 +635,7 @@ export default function Home() {
             <strong>{motifLabel}</strong>
             <span>{findChoice(BASES, baseId).label}</span>
             <div className="swatches" aria-hidden="true"><i /><i /><i /><i /></div>
-            <small>{findChoice(STRENGTHS, strengthId).label}反映</small>
+            <small>{strengthId ? `${findChoice(STRENGTHS, strengthId).label}反映` : "選択を解除済み"}</small>
           </div>
         </section>
 
@@ -586,7 +659,7 @@ export default function Home() {
                     ))}
                   </div>
                 </fieldset>
-                {!traditionalMode ? (
+                {categoryId && !traditionalMode ? (
                   <>
                     <fieldset className="field-block motif-field">
                       <legend>{category.label}の候補</legend>
@@ -604,10 +677,15 @@ export default function Home() {
                       <small>自由入力はそのまま英語プロンプトにも残します。英単語を添えると安定します。</small>
                     </label>
                   </>
-                ) : (
+                ) : traditionalMode ? (
                   <div className="translation-note">
                     <span aria-hidden="true">◎</span>
                     <div><b>衣装選択をひとつに統合しました</b><p>民族・伝統衣装は次のカードで選ぶ1着だけが衣装の核になります。人物タイプによる制限や自動置換はありません。</p></div>
+                  </div>
+                ) : (
+                  <div className="translation-note reset-note">
+                    <span aria-hidden="true">○</span>
+                    <div><b>未選択です</b><p>大きなテーマを選ぶと、モチーフや民族衣装の候補が開きます。</p></div>
                   </div>
                 )}
                 <div className="translation-note">
@@ -637,12 +715,14 @@ export default function Home() {
 
                 <fieldset className="field-block exposure-field">
                   <legend>露出度</legend>
-                  <div className="slider-header"><strong>{["控えめ", "やや控えめ", "標準", "ややセクシー", "セクシー", "大胆"][exposure]}</strong><span>{exposure} / 5</span></div>
-                  <input aria-label="露出度" type="range" min="0" max="5" step="1" value={exposure} onChange={(event) => setExposure(Number(event.target.value))} />
+                  <div className="slider-header"><strong>{exposure === null ? "未選択" : ["控えめ", "やや控えめ", "標準", "ややセクシー", "セクシー", "大胆"][exposure]}</strong><span>{exposure === null ? "— / 5" : `${exposure} / 5`}</span></div>
+                  <input className={exposure === null ? "is-unset" : ""} aria-label="露出度" aria-valuetext={exposure === null ? "未選択" : undefined} type="range" min="0" max="5" step="1" value={exposure ?? 0} onChange={(event) => setExposure(Number(event.target.value))} />
                   <div className="slider-labels"><span>控えめ</span><span>標準</span><span>大胆</span></div>
                   {result.exposure.adapted ? <p className="culture-note">伝統寄りの設定を尊重し、露出は衣装の骨格を崩さない表現へ自動調整しています。</p> : null}
                 </fieldset>
 
+                <ChipGroup label="袖" items={SLEEVES} selected={sleeveId} onChange={(next) => setSleeveId(next as string)} />
+                <ChipGroup label="脚の見せ方" items={LEG_STYLES} selected={legId} onChange={(next) => setLegId(next as string)} />
                 <ChipGroup label="構造アレンジ" items={STRUCTURES} selected={structures} onChange={(next) => setStructures(next as string[])} multi max={4} />
                 <ChipGroup label="一番見せたいポイント" items={FOCUSES} selected={focusId} onChange={(next) => setFocusId(next as string)} />
               </div>
@@ -703,14 +783,14 @@ export default function Home() {
 
             <section className="prompt-card prompt-card-main">
               <div className="prompt-label"><span>完成プロンプト</span><small>ENGLISH · FULL</small></div>
-              <p>{result.detailed}</p>
-              <button className="copy-button" type="button" onClick={() => copyText(result.detailed, "full")}><span aria-hidden="true">▢</span>{copied === "full" ? "コピーしました！" : "完成プロンプトをコピー"}</button>
+              <p className={!result.detailed ? "empty-prompt" : ""}>{result.detailed || "選択した内容がここに表示されます。"}</p>
+              <button className="copy-button" type="button" disabled={!result.detailed} onClick={() => copyText(result.detailed, "full")}><span aria-hidden="true">▢</span>{copied === "full" ? "コピーしました！" : "完成プロンプトをコピー"}</button>
             </section>
 
             <section className="prompt-card">
               <div className="prompt-label"><span>短め版</span><small>ENGLISH · COMPACT</small></div>
-              <p className="compact-prompt">{result.short}</p>
-              <button className="copy-button copy-button-secondary" type="button" onClick={() => copyText(result.short, "short")}><span aria-hidden="true">▢</span>{copied === "short" ? "コピーしました！" : "短め版をコピー"}</button>
+              <p className={`compact-prompt ${!result.short ? "empty-prompt" : ""}`}>{result.short || "選択後に短め版を生成します。"}</p>
+              <button className="copy-button copy-button-secondary" type="button" disabled={!result.short} onClick={() => copyText(result.short, "short")}><span aria-hidden="true">▢</span>{copied === "short" ? "コピーしました！" : "短め版をコピー"}</button>
             </section>
 
             <section className="summary-card">

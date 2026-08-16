@@ -9,9 +9,9 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "build:pages": "vite build --config vite.pages.config.ts",
-    "test:pages": "npm run build:pages && node --test tests/pages-build.test.mjs",
+    "test:pages": "npm run build:pages && node --test tests/prompt-engine.test.mjs tests/reset-state.test.mjs tests/pages-build.test.mjs",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/prompt-engine.test.mjs tests/rendered-html.test.mjs",
+    "test": "npm run build && node --test tests/prompt-engine.test.mjs tests/reset-state.test.mjs tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
