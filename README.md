@@ -2,6 +2,8 @@
 
 感情・神話・自然・民族衣装・美術様式などのモチーフを、画像生成AI向けの衣装プロンプトへ変換するスマホ優先のWebアプリです。
 
+公開ページ: https://nyuriwossan.github.io/concept-fashion-workshop/
+
 ## MVPの主な機能
 
 - 10カテゴリ・50モチーフの衣装化データ
@@ -21,4 +23,3 @@ npm run dev
 ```
 
 生成ロジックのテストと完成ページの検査は `npm test` で実行します。
-
